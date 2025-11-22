@@ -1,0 +1,101 @@
+export default function ProfilePage() {
+    return (
+        <div>
+            <h1 className="font-serif text-3xl text-primary mb-8">My Profile</h1>
+
+            <div className="grid md:grid-cols-3 gap-8">
+                <div className="md:col-span-1">
+                    <div className="bg-white p-6 rounded-lg shadow-sm border border-primary/10 text-center">
+                        <div className="w-32 h-32 bg-secondary rounded-full mx-auto mb-4 flex items-center justify-center text-4xl text-white font-bold">
+                            JS
+                        </div>
+                        <h2 className="font-serif text-xl font-bold text-text">Jnanesh Shetty</h2>
+                        <p className="text-sm text-text/70 mb-6">Member since Nov 2025</p>
+                        <button className="w-full py-2 border border-primary text-primary text-xs font-bold uppercase tracking-widest rounded hover:bg-primary hover:text-white transition-colors">
+                            Edit Photo
+                        </button>
+                    </div>
+                </div>
+
+                <div className="md:col-span-2">
+                    <div className="bg-white p-8 rounded-lg shadow-sm border border-primary/10 mb-8">
+                        <h3 className="font-serif text-xl text-text mb-6">Personal Details</h3>
+                        <form className="grid grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-xs font-bold text-text/60 uppercase tracking-wider mb-1">First Name</label>
+                                <input type="text" defaultValue="Jnanesh" className="w-full p-2 border border-gray-200 rounded text-sm" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-text/60 uppercase tracking-wider mb-1">Last Name</label>
+                                <input type="text" defaultValue="Shetty" className="w-full p-2 border border-gray-200 rounded text-sm" />
+                            </div>
+                            <div className="col-span-2">
+                                <label className="block text-xs font-bold text-text/60 uppercase tracking-wider mb-1">Email</label>
+                                <input type="email" defaultValue="jnanesh@example.com" className="w-full p-2 border border-gray-200 rounded text-sm" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-text/60 uppercase tracking-wider mb-1">Phone</label>
+                                <input type="tel" defaultValue="+91 98765 43210" className="w-full p-2 border border-gray-200 rounded text-sm" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-text/60 uppercase tracking-wider mb-1">Location</label>
+                                <input type="text" defaultValue="Bangalore, India" className="w-full p-2 border border-gray-200 rounded text-sm" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-text/60 uppercase tracking-wider mb-1">Timezone</label>
+                                <select className="w-full p-2 border border-gray-200 rounded text-sm">
+                                    <option>IST (India Standard Time)</option>
+                                    <option>GMT (Greenwich Mean Time)</option>
+                                    <option>EST (Eastern Standard Time)</option>
+                                    <option>PST (Pacific Standard Time)</option>
+                                </select>
+                            </div>
+                            <div className="col-span-2">
+                                <label className="block text-xs font-bold text-text/60 uppercase tracking-wider mb-2">Communication Preference</label>
+                                <div className="flex gap-6">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input type="checkbox" defaultChecked className="text-primary focus:ring-primary" />
+                                        <span className="text-sm">Email</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input type="checkbox" defaultChecked className="text-primary focus:ring-primary" />
+                                        <span className="text-sm">WhatsApp</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input type="checkbox" className="text-primary focus:ring-primary" />
+                                        <span className="text-sm">Phone Call</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div className="col-span-2 mt-4">
+                                <button type="submit" className="px-6 py-3 bg-primary text-white text-xs font-bold uppercase tracking-widest rounded hover:bg-secondary transition-colors">
+                                    Save Changes
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div className="bg-white p-8 rounded-lg shadow-sm border border-primary/10">
+                        <h3 className="font-serif text-xl text-text mb-6">Health Profile</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-text/60 uppercase tracking-wider mb-1">Primary Goal</label>
+                                <select className="w-full p-2 border border-gray-200 rounded text-sm">
+                                    <option>Stress Relief</option>
+                                    <option>Flexibility</option>
+                                    <option>Strength</option>
+                                    <option>Pain Management</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-text/60 uppercase tracking-wider mb-1">Injuries / Conditions</label>
+                                <textarea className="w-full p-2 border border-gray-200 rounded text-sm" rows={3} defaultValue="Mild lower back pain occasionally."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}

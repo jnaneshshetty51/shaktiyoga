@@ -1,0 +1,177 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum Role {
+  SUPER_ADMIN
+  STAFF_ADMIN
+  TEACHER
+  MEMBER_EVERYDAY
+  MEMBER_THERAPY
+  TRIAL
+  VISITOR
+}
+
+enum PlanType {
+  EVERYDAY_YOGA
+  YOGA_THERAPY
+  TRIAL
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  PAUSED
+  TRIAL
+  EXPIRED
+}
+
+enum BookingType {
+  THERAPY_SESSION
+  CONSULTATION
+  SPECIAL_SESSION
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+// Models
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  passwordHash  String?
+  role          Role      @default(VISITOR)
+  phone         String?
+  country       String?
+  timezone      String    @default("IST")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastLogin     DateTime?
+
+  // Relations
+  profile       UserProfile?
+  subscription  Subscription?
+  bookings      Booking[]
+  stories       Story[]
+  
+  // For Teachers
+  classesTaught ClassBatch[]
+  sessionsTaught Booking[] @relation("TeacherBookings")
+}
+
+model UserProfile {
+  id              String  @id @default(cuid())
+  userId          String  @unique
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goals           String?
+  medicalHistory  String?
+  communicationPref String? // Email, WhatsApp, Phone
+}
+
+model Subscription {
+  id            String             @id @default(cuid())
+  userId        String             @unique
+  user          User               @relation(fields: [userId], references: [id])
+  planType      PlanType
+  amount        Float
+  currency      String             @default("USD")
+  status        SubscriptionStatus @default(ACTIVE)
+  startDate     DateTime           @default(now())
+  renewalDate   DateTime
+  billingProviderId String? // Stripe/Razorpay ID
+}
+
+model ClassBatch {
+  id          String   @id @default(cuid())
+  name        String
+  planType    PlanType
+  daysOfWeek  String[] // ["Mon", "Wed", "Fri"]
+  timeSlot    String   // "06:00 AM"
+  teacherId   String
+  teacher     User     @relation(fields: [teacherId], references: [id])
+  active      Boolean  @default(true)
+  meetingLink String?
+  
+  instances   ClassInstance[]
+}
+
+model ClassInstance {
+  id          String   @id @default(cuid())
+  batchId     String
+  batch       ClassBatch @relation(fields: [batchId], references: [id])
+  date        DateTime
+  status      String   // Scheduled, Completed, Cancelled
+  recordingUrl String?
+  attendanceCount Int @default(0)
+}
+
+model Booking {
+  id          String        @id @default(cuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+  teacherId   String
+  teacher     User          @relation("TeacherBookings", fields: [teacherId], references: [id])
+  type        BookingType
+  status      BookingStatus @default(PENDING)
+  date        DateTime
+  notes       String?       // Session notes by teacher
+  meetingLink String?
+  createdAt   DateTime      @default(now())
+}
+
+model Story {
+  id          String        @id @default(cuid())
+  userId      String?
+  user        User?         @relation(fields: [userId], references: [id])
+  authorName  String        // Fallback if no user
+  location    String?
+  planType    String?
+  quote       String
+  content     String?       // Longer testimonial
+  rating      Int           @default(5)
+  status      ContentStatus @default(DRAFT)
+  imageUrl    String?
+  createdAt   DateTime      @default(now())
+}
+
+model BlogPost {
+  id          String        @id @default(cuid())
+  slug        String        @unique
+  title       String
+  excerpt     String?
+  content     String        // Markdown or HTML
+  category    String
+  author      String
+  publishedAt DateTime?
+  status      ContentStatus @default(DRAFT)
+  imageUrl    String?
+  createdAt   DateTime      @default(now())
+}
+
+model WhatsAppGroup {
+  id          String   @id @default(cuid())
+  name        String
+  link        String
+  role        Role     // Which role this group is for
+  pinnedMessage String?
+  active      Boolean  @default(true)
+}
