@@ -10,7 +10,7 @@ ssh root@your-vps-ip
 ### 2. Run Initial Setup
 ```bash
 # Download setup script
-wget -O setup-vps.sh https://raw.githubusercontent.com/your-repo/shakti-yoga/main/deploy/setup-vps.sh
+wget -O setup-vps.sh https://raw.githubusercontent.com/shaktiyogakendra-cloud/shaktiyoga/main/deploy/setup-vps.sh
 chmod +x setup-vps.sh
 sudo ./setup-vps.sh
 ```
@@ -18,8 +18,8 @@ sudo ./setup-vps.sh
 ### 3. Clone Repository
 ```bash
 cd /var/www
-git clone https://github.com/your-username/shakti-yoga.git
-cd shakti-yoga
+git clone https://github.com/shaktiyogakendra-cloud/shaktiyoga.git
+cd shaktiyoga
 ```
 
 ### 4. Configure Environment
@@ -40,23 +40,20 @@ nano .env
 
 ### 5. Start Database & MinIO
 ```bash
-# Create .env file for docker-compose (or use same .env)
-cp .env docker.env
-
-# Update docker-compose.yml with your values OR
-# Create docker.env with these variables:
-# POSTGRES_USER=shaktiyoga
-# POSTGRES_PASSWORD=your_secure_password
-# POSTGRES_DB=shaktiyoga
-# MINIO_ROOT_USER=your_minio_user
-# MINIO_ROOT_PASSWORD=your_minio_password
-# MINIO_BUCKET=shakti-yoga-assets
+# Docker Compose will use environment variables from .env file
+# Make sure your .env has these variables set:
+# POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB
+# MINIO_ROOT_USER, MINIO_ROOT_PASSWORD, MINIO_BUCKET
 
 # Start services
 docker-compose up -d
 
-# Verify
+# Wait a few seconds for services to start, then verify
 docker ps
+
+# Check logs if needed
+docker logs shakti-postgres
+docker logs shakti-minio
 ```
 
 ### 6. Deploy Application
@@ -95,8 +92,9 @@ certbot --nginx -d your-domain.com -d www.your-domain.com
 
 1. **Change all default passwords** before going to production
 2. **Update domain names** in nginx.conf and .env
-3. **Secure MinIO ports** (9000, 9001) - consider restricting access
+3. **Secure MinIO ports** (9000, 9001) - consider restricting access via firewall
 4. **Run database seed** after first deployment: `npm run db:seed`
+5. **Ensure .env file is configured** with all required variables before starting services
 
 ## 🔧 Common Commands
 
