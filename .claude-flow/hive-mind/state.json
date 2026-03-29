@@ -1,0 +1,50 @@
+{
+  "initialized": true,
+  "topology": "hierarchical",
+  "workers": [
+    "mobile-worker-1774677608015-rb8t",
+    "mobile-worker-1774677608017-1evq",
+    "mobile-worker-1774677608017-8j6u",
+    "mobile-worker-1774677608018-au48",
+    "mobile-worker-1774677608018-7r3m"
+  ],
+  "consensus": {
+    "pending": [
+      {
+        "proposalId": "proposal-1774677599042-hb9qbo",
+        "type": "conventions",
+        "value": {
+          "colors": {
+            "primary": "#4A6741",
+            "secondary": "#C68E5D",
+            "background": "#FAFAF8",
+            "card": "#FFFFFF",
+            "error": "#DC2626",
+            "success": "#16A34A"
+          },
+          "apiBase": "Constants.expoConfig.extra.apiUrl",
+          "stateManagement": "TanStack Query for server state, Zustand for auth",
+          "haptics": "expo-haptics on scan success/booking confirm",
+          "navigation": "expo-router file-based",
+          "fonts": "system default",
+          "borderRadius": 12
+        },
+        "proposedBy": "system",
+        "proposedAt": "2026-03-28T05:59:59.043Z",
+        "votes": {},
+        "status": "pending",
+        "strategy": "quorum",
+        "quorumPreset": "majority"
+      }
+    ],
+    "history": []
+  },
+  "sharedMemory": {},
+  "createdAt": "2026-03-28T05:59:49.777Z",
+  "updatedAt": "2026-03-28T06:00:08.019Z",
+  "queen": {
+    "agentId": "queen-mobile-orchestrator",
+    "electedAt": "2026-03-28T05:59:49.779Z",
+    "term": 1
+  }
+}

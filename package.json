@@ -1,45 +1,39 @@
 {
-  "name": "shakti-yoga",
+  "name": "yogastudio-pro",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint",
-    "db:migrate": "prisma migrate deploy",
-    "db:migrate:dev": "prisma migrate dev",
-    "db:generate": "prisma generate",
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "db:migrate": "prisma migrate deploy --schema ./prisma/schema.prisma",
+    "db:migrate:dev": "prisma migrate dev --schema ./prisma/schema.prisma",
+    "db:generate": "prisma generate --schema ./prisma/schema.prisma",
     "db:seed": "prisma db seed",
-    "db:setup": "bash scripts/setup-db.sh",
-    "db:studio": "prisma studio"
+    "db:setup": "bash apps/web/scripts/setup-db.sh",
+    "db:studio": "prisma studio --schema ./prisma/schema.prisma"
   },
   "prisma": {
+    "schema": "prisma/schema.prisma",
     "seed": "tsx prisma/seed.ts"
   },
-  "dependencies": {
-    "@aws-sdk/client-s3": "^3.937.0",
-    "@prisma/client": "^5.22.0",
-    "bcryptjs": "^3.0.3",
-    "jose": "^6.1.2",
-    "next": "16.0.3",
-    "prisma": "^5.22.0",
-    "react": "19.2.0",
-    "react-dom": "19.2.0",
-    "react-icons": "^5.5.0"
-  },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "autoprefixer": "^10.4.22",
-    "babel-plugin-react-compiler": "1.0.0",
-    "eslint": "^9",
-    "eslint-config-next": "16.0.3",
-    "postcss": "^8.5.6",
-    "tailwindcss": "^3.4.17",
+    "turbo": "^2.3.3",
     "tsx": "^4.20.6",
     "typescript": "^5"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "prisma": "^5.22.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "esbuild",
+      "prisma",
+      "sharp",
+      "unrs-resolver"
+    ]
   }
 }

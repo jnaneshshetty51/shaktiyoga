@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm approve-builds:*)",
+      "Bash(pnpm --filter @yogastudio/web install:*)",
+      "Bash(pnpm db:migrate:dev:*)",
+      "Bash(prisma migrate dev:*)",
+      "Bash(pnpm db:migrate:*)",
+      "Bash(pnpm db:generate:*)",
+      "Bash(claude mcp add:*)",
+      "Bash(for file in /Users/jnaneshshetty/Desktop/shaktiyoga/apps/web/src/app/api/admin/attendance/[instanceId]/route.ts /Users/jnaneshshetty/Desktop/shaktiyoga/apps/web/src/app/api/admin/bookings/route.ts /Users/jnaneshshetty/Desktop/shaktiyoga/apps/web/src/app/api/admin/classes/[id]/route.ts /Users/jnaneshshetty/Desktop/shaktiyoga/apps/web/src/app/api/admin/classes/route.ts /Users/jnaneshshetty/Desktop/shaktiyoga/apps/web/src/app/api/admin/community/route.ts /Users/jnaneshshetty/Desktop/shaktiyoga/apps/web/src/app/api/admin/content/route.ts /Users/jnaneshshetty/Desktop/shaktiyoga/apps/web/src/app/api/admin/memberships/[id]/route.ts /Users/jnaneshshetty/Desktop/shaktiyoga/apps/web/src/app/api/admin/memberships/route.ts)",
+      "Bash(if [ -f \"$file\" ])",
+      "mcp__ruflo__guidance_capabilities",
+      "mcp__ruflo__guidance_workflow",
+      "mcp__ruflo__swarm_init",
+      "mcp__ruflo__hive-mind_init",
+      "mcp__ruflo__hive-mind_consensus",
+      "mcp__ruflo__hive-mind_spawn"
+    ],
+    "additionalDirectories": [
+      "/Users/jnaneshshetty/Desktop/shaktiyoga/apps/web/src/app/api/admin/classes",
+      "/Users/jnaneshshetty/Desktop/shaktiyoga/apps/web/src/app/api/schedule/[instanceId]"
+    ]
+  }
+}

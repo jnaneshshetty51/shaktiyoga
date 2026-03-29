@@ -7,7 +7,8 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Enums
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
 enum Role {
   SUPER_ADMIN
   STAFF_ADMIN
@@ -52,78 +53,240 @@ enum ContentStatus {
   ARCHIVED
 }
 
-// Models
+enum PaymentStatus {
+  PENDING
+  CAPTURED
+  FAILED
+  REFUNDED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  NO_SHOW
+  EXCUSED
+}
+
+enum WaitlistStatus {
+  WAITING
+  PROMOTED
+  EXPIRED
+}
+
+enum ClassInstanceStatus {
+  SCHEDULED
+  LIVE
+  COMPLETED
+  CANCELLED
+}
+
+// ─── Core Models ──────────────────────────────────────────────────────────────
 
 model User {
-  id            String    @id @default(cuid())
-  name          String
-  email         String    @unique
-  passwordHash  String?
-  role          Role      @default(VISITOR)
-  phone         String?
-  country       String?
-  timezone      String    @default("IST")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  lastLogin     DateTime?
+  id             String    @id @default(cuid())
+  name           String
+  email          String?   @unique
+  passwordHash   String?
+  role           Role      @default(VISITOR)
+  phone          String?   @unique
+  phoneVerified  Boolean   @default(false)
+  country        String?
+  timezone       String    @default("IST")
+  expoPushToken  String?
+  razorpayCustomerId String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  lastLogin      DateTime?
 
   // Relations
-  profile       UserProfile?
-  subscription  Subscription?
-  bookings      Booking[]
-  stories       Story[]
-  
+  profile        UserProfile?
+  subscription   Subscription?
+  bookings       Booking[]
+  stories        Story[]
+  payments       Payment[]
+  attendances    Attendance[]
+  waitlistEntries Waitlist[]
+  classBookings  ClassBooking[]
+  notifications  Notification[]
+  deviceSessions DeviceSession[]
+
   // For Teachers
-  classesTaught ClassBatch[]
+  classesTaught  ClassBatch[]
   sessionsTaught Booking[] @relation("TeacherBookings")
 }
 
 model UserProfile {
-  id              String  @id @default(cuid())
-  userId          String  @unique
-  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  goals           String?
-  medicalHistory  String?
+  id                String  @id @default(cuid())
+  userId            String  @unique
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goals             String?
+  medicalHistory    String?
   communicationPref String? // Email, WhatsApp, Phone
 }
 
-model Subscription {
-  id            String             @id @default(cuid())
-  userId        String             @unique
-  user          User               @relation(fields: [userId], references: [id])
-  planType      PlanType
-  amount        Float
-  currency      String             @default("USD")
-  status        SubscriptionStatus @default(ACTIVE)
-  startDate     DateTime           @default(now())
-  renewalDate   DateTime
-  billingProviderId String? // Stripe/Razorpay ID
+// ─── Subscriptions & Memberships ─────────────────────────────────────────────
+
+/// Subscription plan catalog — created by admin, defines pricing & limits
+model Membership {
+  id             String    @id @default(cuid())
+  name           String
+  planType       PlanType
+  durationDays   Int       // 30 = monthly, 90 = quarterly, 365 = annual
+  price          Float     // Amount in INR
+  currency       String    @default("INR")
+  classesPerWeek Int?      // null = unlimited
+  sessionsTotal  Int?      // For therapy: total 1:1 sessions included
+  isActive       Boolean   @default(true)
+  razorpayPlanId String?   // Razorpay plan ID for auto-debit subscriptions
+  description    String?
+  features       String[]  // Bullet points for UI display
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
 
+/// A member's active/historical subscription
+model Subscription {
+  id                    String             @id @default(cuid())
+  userId                String             @unique
+  user                  User               @relation(fields: [userId], references: [id])
+  planType              PlanType
+  amount                Float
+  currency              String             @default("INR")
+  status                SubscriptionStatus @default(ACTIVE)
+  startDate             DateTime           @default(now())
+  renewalDate           DateTime
+  endDate               DateTime?
+  pausedAt              DateTime?
+  pausedUntil           DateTime?
+  freezeDays            Int                @default(0)
+  billingProviderId     String?            // Razorpay subscription ID
+  razorpayCustomerId    String?
+  cancelledAt           DateTime?
+  cancelReason          String?
+  updatedAt             DateTime           @updatedAt
+
+  payments              Payment[]
+}
+
+// ─── Payments ─────────────────────────────────────────────────────────────────
+
+model Payment {
+  id                     String        @id @default(cuid())
+  userId                 String
+  user                   User          @relation(fields: [userId], references: [id])
+  subscriptionId         String?
+  subscription           Subscription? @relation(fields: [subscriptionId], references: [id])
+  amount                 Float
+  currency               String        @default("INR")
+  status                 PaymentStatus @default(PENDING)
+  razorpayOrderId        String?       @unique
+  razorpayPaymentId      String?       @unique
+  razorpaySignature      String?
+  razorpaySubscriptionId String?
+  invoiceUrl             String?       // MinIO URL for generated PDF
+  invoiceNumber          String?       @unique
+  description            String?
+  failureReason          String?
+  refundId               String?
+  metadata               Json?
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+}
+
+// ─── Class Scheduling ─────────────────────────────────────────────────────────
+
+/// Recurring class template (Mon/Wed/Fri at 6am)
 model ClassBatch {
   id          String   @id @default(cuid())
   name        String
   planType    PlanType
   daysOfWeek  String[] // ["Mon", "Wed", "Fri"]
-  timeSlot    String   // "06:00 AM"
+  timeSlot    String   // "06:00"
+  timezone    String   @default("Asia/Kolkata")
+  rrule       String?  // RFC 5545 RRULE string (optional override)
+  capacity    Int      @default(30)
+  durationMins Int     @default(60)
   teacherId   String
   teacher     User     @relation(fields: [teacherId], references: [id])
   active      Boolean  @default(true)
   meetingLink String?
-  
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
   instances   ClassInstance[]
 }
 
+/// A single scheduled occurrence of a ClassBatch
 model ClassInstance {
-  id          String   @id @default(cuid())
-  batchId     String
-  batch       ClassBatch @relation(fields: [batchId], references: [id])
-  date        DateTime
-  status      String   // Scheduled, Completed, Cancelled
-  recordingUrl String?
-  attendanceCount Int @default(0)
+  id              String              @id @default(cuid())
+  batchId         String
+  batch           ClassBatch          @relation(fields: [batchId], references: [id])
+  date            DateTime
+  status          ClassInstanceStatus @default(SCHEDULED)
+  capacity        Int                 @default(30)
+  recordingUrl    String?
+  meetingLink     String?             // Override batch meeting link for this instance
+  cancelledReason String?
+  attendanceCount Int                 @default(0)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  classBookings   ClassBooking[]
+  attendances     Attendance[]
+  waitlist        Waitlist[]
 }
 
+/// Member booking a specific class instance (group class)
+model ClassBooking {
+  id           String        @id @default(cuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id])
+  instanceId   String
+  instance     ClassInstance @relation(fields: [instanceId], references: [id])
+  status       BookingStatus @default(CONFIRMED)
+  bookedAt     DateTime      @default(now())
+  cancelledAt  DateTime?
+  cancelReason String?
+
+  @@unique([userId, instanceId])
+}
+
+/// QR/manual attendance record for a class instance
+model Attendance {
+  id            String           @id @default(cuid())
+  userId        String
+  user          User             @relation(fields: [userId], references: [id])
+  instanceId    String
+  instance      ClassInstance    @relation(fields: [instanceId], references: [id])
+  status        AttendanceStatus @default(PRESENT)
+  checkInAt     DateTime?
+  checkInMethod String?          // "QR_SCAN" | "MANUAL" | "AUTO"
+  qrToken       String?          // The JWT token that was scanned (for audit)
+  markedBy      String?          // userId of admin/teacher if manually marked
+  createdAt     DateTime         @default(now())
+
+  @@unique([userId, instanceId])
+}
+
+/// Waitlist for full class instances
+model Waitlist {
+  id         String         @id @default(cuid())
+  userId     String
+  user       User           @relation(fields: [userId], references: [id])
+  instanceId String
+  instance   ClassInstance  @relation(fields: [instanceId], references: [id])
+  position   Int
+  status     WaitlistStatus @default(WAITING)
+  notifiedAt DateTime?
+  expiresAt  DateTime?
+  createdAt  DateTime       @default(now())
+
+  @@unique([userId, instanceId])
+}
+
+// ─── 1:1 Bookings (Therapy / Consultation) ───────────────────────────────────
+
+/// Existing 1:1 session bookings (therapy, consultation)
 model Booking {
   id          String        @id @default(cuid())
   userId      String
@@ -138,19 +301,56 @@ model Booking {
   createdAt   DateTime      @default(now())
 }
 
+// ─── Auth & Sessions ──────────────────────────────────────────────────────────
+
+/// Refresh token tracking (one per device/session)
+model DeviceSession {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id])
+  refreshToken String    @unique
+  deviceType   String?   // "ios" | "android" | "web"
+  deviceId     String?
+  userAgent    String?
+  ipAddress    String?
+  expiresAt    DateTime
+  lastUsedAt   DateTime  @default(now())
+  revokedAt    DateTime?
+  createdAt    DateTime  @default(now())
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  title     String
+  body      String
+  channel   String    // "PUSH" | "SMS" | "EMAIL"
+  data      Json?     // Deep link payload for push notifications
+  readAt    DateTime?
+  sentAt    DateTime?
+  failedAt  DateTime?
+  error     String?
+  createdAt DateTime  @default(now())
+}
+
+// ─── Content ──────────────────────────────────────────────────────────────────
+
 model Story {
-  id          String        @id @default(cuid())
-  userId      String?
-  user        User?         @relation(fields: [userId], references: [id])
-  authorName  String        // Fallback if no user
-  location    String?
-  planType    String?
-  quote       String
-  content     String?       // Longer testimonial
-  rating      Int           @default(5)
-  status      ContentStatus @default(DRAFT)
-  imageUrl    String?
-  createdAt   DateTime      @default(now())
+  id         String        @id @default(cuid())
+  userId     String?
+  user       User?         @relation(fields: [userId], references: [id])
+  authorName String        // Fallback if no user
+  location   String?
+  planType   String?
+  quote      String
+  content    String?       // Longer testimonial
+  rating     Int           @default(5)
+  status     ContentStatus @default(DRAFT)
+  imageUrl   String?
+  createdAt  DateTime      @default(now())
 }
 
 model BlogPost {
@@ -168,10 +368,10 @@ model BlogPost {
 }
 
 model WhatsAppGroup {
-  id          String   @id @default(cuid())
-  name        String
-  link        String
-  role        Role     // Which role this group is for
+  id            String   @id @default(cuid())
+  name          String
+  link          String
+  role          Role     // Which role this group is for
   pinnedMessage String?
-  active      Boolean  @default(true)
+  active        Boolean  @default(true)
 }

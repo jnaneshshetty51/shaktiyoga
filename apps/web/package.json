@@ -1,0 +1,45 @@
+{
+  "name": "@yogastudio/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.937.0",
+    "@prisma/client": "^5.22.0",
+    "@react-pdf/renderer": "^3.4.4",
+    "@yogastudio/types": "workspace:*",
+    "bcryptjs": "^3.0.3",
+    "ioredis": "^5.4.2",
+    "jose": "^6.1.2",
+    "next": "16.0.3",
+    "node-cron": "^3.0.3",
+    "qrcode": "^1.5.4",
+    "razorpay": "^2.9.6",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "react-icons": "^5.5.0",
+    "rrule": "^2.8.1",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20",
+    "@types/node-cron": "^3.0.11",
+    "@types/qrcode": "^1.5.5",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "autoprefixer": "^10.4.22",
+    "babel-plugin-react-compiler": "1.0.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.0.3",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5"
+  }
+}
