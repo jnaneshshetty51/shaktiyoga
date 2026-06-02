@@ -137,7 +137,7 @@ function CheckoutContent() {
                         <div className="flex items-start gap-3">
                             <input type="checkbox" id="terms" required className="mt-1" />
                             <label htmlFor="terms" className="text-xs text-gray-600">
-                                I agree to the <Link href="#" className="underline">Terms of Service</Link> and <Link href="#" className="underline">Privacy Policy</Link>.
+                                I agree to the <Link href="/terms" className="underline">Terms of Service</Link> and <Link href="/privacy" className="underline">Privacy Policy</Link>.
                                 {selectedPlan.price > 0 && " I authorize Shakti Yoga to charge my card for the amount above."}
                             </label>
                         </div>

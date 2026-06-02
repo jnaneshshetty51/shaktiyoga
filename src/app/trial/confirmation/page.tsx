@@ -22,7 +22,7 @@ export default function TrialConfirmationPage() {
                         </li>
                         <li className="flex items-start gap-3">
                             <span className="text-secondary font-bold">2.</span>
-                            <span>Join our <a href="#" className="text-primary underline">WhatsApp Community</a> for updates.</span>
+                            <span>Join our <a href="https://wa.me/917204050478" target="_blank" rel="noopener noreferrer" className="text-primary underline">WhatsApp Community</a> for updates.</span>
                         </li>
                         <li className="flex items-start gap-3">
                             <span className="text-secondary font-bold">3.</span>

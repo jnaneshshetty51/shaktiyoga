@@ -27,7 +27,7 @@ export default function WelcomePage() {
                         <div className="text-2xl mb-2">📱</div>
                         <h3 className="font-bold text-gray-800 mb-1">Join Community</h3>
                         <p className="text-sm text-gray-600 mb-4">Connect with fellow yogis on WhatsApp.</p>
-                        <a href="#" className="text-primary font-bold text-sm hover:underline">
+                        <a href="https://wa.me/917204050478" target="_blank" rel="noopener noreferrer" className="text-primary font-bold text-sm hover:underline">
                             Join Group →
                         </a>
                     </div>

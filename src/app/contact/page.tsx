@@ -36,7 +36,7 @@ export default function ContactPage() {
                             <p className="font-sans text-sm mb-4">
                                 Get daily updates, tips, and inspiration on our WhatsApp channel.
                             </p>
-                            <a href="#" className="inline-block px-6 py-2 bg-green-600 text-white font-bold rounded hover:bg-green-700 transition-colors">
+                            <a href="https://wa.me/917204050478" target="_blank" rel="noopener noreferrer" className="inline-block px-6 py-2 bg-green-600 text-white font-bold rounded hover:bg-green-700 transition-colors">
                                 Join WhatsApp Group
                             </a>
                         </div>

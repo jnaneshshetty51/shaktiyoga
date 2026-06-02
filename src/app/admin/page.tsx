@@ -1,130 +1,291 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { PageHeader, StatCard, SectionCard } from "@/components/admin";
+import { DataTable, Column, StatusBadge, Badge } from "@/components/admin";
+import { 
+  FaUsers, 
+  FaDollarSign, 
+  FaCalendarCheck, 
+  FaUserPlus,
+  FaArrowRight,
+  FaClock,
+  FaCheckCircle,
+  FaComment,
+  FaRupeeSign,
+} from "react-icons/fa";
 
-interface Stats {
-    activeMembers: number;
-    trialUsers: number;
-    mrr: number;
-    pendingBookings: number;
+interface DashboardStats {
+  activeMembers: number;
+  mrr: number;
+  trialUsers: number;
+  pendingBookings: number;
+  mrrChange: number;
+  membersChange: number;
+}
+
+interface RecentActivity {
+  id: string;
+  type: "signup" | "booking" | "payment" | "trial";
+  message: string;
+  timestamp: string;
+}
+
+interface UpcomingBooking {
+  id: string;
+  memberName: string;
+  type: string;
+  date: string;
+  time: string;
+}
+
+interface TopMember {
+  id: string;
+  name: string;
+  email: string;
+  plan: string;
+  lastActive: string;
 }
 
 export default function AdminDashboardPage() {
-    const [stats, setStats] = useState<Stats>({
-        activeMembers: 0,
-        trialUsers: 0,
-        mrr: 0,
-        pendingBookings: 0,
-    });
-    const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<DashboardStats>({
+    activeMembers: 0,
+    mrr: 0,
+    trialUsers: 0,
+    pendingBookings: 0,
+    mrrChange: 0,
+    membersChange: 0,
+  });
+  const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        async function fetchStats() {
-            try {
-                const response = await fetch('/api/admin/stats');
-                if (response.ok) {
-                    const data = await response.json();
-                    setStats(data);
-                }
-            } catch (error) {
-                console.error('Failed to fetch stats:', error);
-            } finally {
-                setLoading(false);
-            }
-        }
-        fetchStats();
-    }, []);
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
 
-    if (loading) {
-        return (
-            <div>
-                <h1 className="font-serif text-3xl text-gray-800 mb-8">Dashboard Overview</h1>
-                <div className="text-gray-500">Loading...</div>
-            </div>
-        );
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch("/api/admin/stats");
+      if (response.ok) {
+        const data = await response.json();
+        setStats(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch stats:", error);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    return (
+  // Mock recent activity data
+  const recentActivity: RecentActivity[] = [
+    { id: "1", type: "signup", message: "Sarah Johnson started a free trial", timestamp: "2 hours ago" },
+    { id: "2", type: "payment", message: "Payment of ₹7,200 received from Mike Ross", timestamp: "4 hours ago" },
+    { id: "3", type: "booking", message: "John Doe booked a therapy session for tomorrow", timestamp: "5 hours ago" },
+    { id: "4", type: "trial", message: "Emma Wilson completed 3 trial classes", timestamp: "1 day ago" },
+    { id: "5", type: "booking", message: "Robert Chen booked consultation call", timestamp: "1 day ago" },
+  ];
+
+  // Mock upcoming bookings
+  const upcomingBookings: UpcomingBooking[] = [
+    { id: "1", memberName: "Priya Sharma", type: "Therapy Session", date: "Today", time: "10:00 AM IST" },
+    { id: "2", memberName: "Anita Patel", type: "Consultation", date: "Today", time: "11:30 AM IST" },
+    { id: "3", memberName: "John Doe", type: "Therapy Session", date: "Tomorrow", time: "09:00 AM IST" },
+    { id: "4", memberName: "Sarah Wilson", type: "Therapy Session", date: "Tomorrow", time: "02:00 PM IST" },
+  ];
+
+  // Mock top members
+  const topMembers: TopMember[] = [
+    { id: "1", name: "Priya Sharma", email: "priya@email.com", plan: "Yoga Therapy", lastActive: "Today" },
+    { id: "2", name: "Mike Ross", email: "mike@email.com", plan: "Everyday Yoga", lastActive: "Today" },
+    { id: "3", name: "Emma Wilson", email: "emma@email.com", plan: "Everyday Yoga", lastActive: "Yesterday" },
+    { id: "4", name: "Robert Chen", email: "robert@email.com", plan: "Yoga Therapy", lastActive: "2 days ago" },
+  ];
+
+  const activityIcons: Record<string, React.ReactNode> = {
+    signup: <FaUserPlus className="text-green-500" />,
+    booking: <FaCalendarCheck className="text-blue-500" />,
+    payment: <FaRupeeSign className="text-yellow-500" />,
+    trial: <FaClock className="text-purple-500" />,
+  };
+
+  const quickActions = [
+    { label: "Add Member", href: "/admin/users?action=add", icon: <FaUserPlus />, color: "bg-blue-500" },
+    { label: "View Bookings", href: "/admin/bookings", icon: <FaCalendarCheck />, color: "bg-green-500" },
+    { label: "Manage Content", href: "/admin/content", icon: <FaComment />, color: "bg-purple-500" },
+    { label: "View Analytics", href: "/admin/analytics", icon: <FaDollarSign />, color: "bg-orange-500" },
+  ];
+
+  const memberColumns: Column<TopMember>[] = [
+    {
+      key: "name",
+      header: "Member",
+      render: (member) => (
         <div>
-            <h1 className="font-serif text-3xl text-gray-800 mb-8">Dashboard Overview</h1>
-
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-                    <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Active Members</div>
-                    <div className="text-3xl font-bold text-primary">{stats.activeMembers}</div>
-                    <div className="text-xs text-green-600 mt-2">↑ 12% vs last month</div>
-                </div>
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-                    <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Monthly Revenue</div>
-                    <div className="text-3xl font-bold text-gray-800">${stats.mrr.toFixed(2)}</div>
-                    <div className="text-xs text-green-600 mt-2">↑ 5% vs last month</div>
-                </div>
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-                    <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Active Trials</div>
-                    <div className="text-3xl font-bold text-secondary">{stats.trialUsers}</div>
-                    <div className="text-xs text-gray-500 mt-2">3 expiring soon</div>
-                </div>
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-                    <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Pending Bookings</div>
-                    <div className="text-3xl font-bold text-orange-500">{stats.pendingBookings}</div>
-                    <div className="text-xs text-gray-500 mt-2">Action required</div>
-                </div>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-8">
-                {/* Quick Actions */}
-                <div className="md:col-span-2 bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-                    <h3 className="font-bold text-gray-800 mb-4">Quick Actions</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <Link href="/admin/users" className="p-4 border border-gray-100 rounded hover:bg-gray-50 text-center transition-colors">
-                            <div className="text-2xl mb-2">👤</div>
-                            <div className="text-sm font-bold text-gray-600">Add User</div>
-                        </Link>
-                        <Link href="/admin/classes" className="p-4 border border-gray-100 rounded hover:bg-gray-50 text-center transition-colors">
-                            <div className="text-2xl mb-2">🧘‍♀️</div>
-                            <div className="text-sm font-bold text-gray-600">Create Class</div>
-                        </Link>
-                        <Link href="/admin/content" className="p-4 border border-gray-100 rounded hover:bg-gray-50 text-center transition-colors">
-                            <div className="text-2xl mb-2">📝</div>
-                            <div className="text-sm font-bold text-gray-600">Write Blog</div>
-                        </Link>
-                        <Link href="/admin/community" className="p-4 border border-gray-100 rounded hover:bg-gray-50 text-center transition-colors">
-                            <div className="text-2xl mb-2">💬</div>
-                            <div className="text-sm font-bold text-gray-600">Update Group</div>
-                        </Link>
-                    </div>
-                </div>
-
-                {/* Recent Activity Feed (Mock) */}
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-                    <h3 className="font-bold text-gray-800 mb-4">Recent Activity</h3>
-                    <div className="space-y-4">
-                        <div className="flex gap-3 text-sm">
-                            <div className="w-2 h-2 mt-1.5 rounded-full bg-green-500 shrink-0"></div>
-                            <div>
-                                <span className="font-bold text-gray-700">New Signup</span>
-                                <p className="text-gray-500 text-xs">Mike Ross started a trial.</p>
-                            </div>
-                        </div>
-                        <div className="flex gap-3 text-sm">
-                            <div className="w-2 h-2 mt-1.5 rounded-full bg-blue-500 shrink-0"></div>
-                            <div>
-                                <span className="font-bold text-gray-700">Booking Confirmed</span>
-                                <p className="text-gray-500 text-xs">Sarah Jones booked Therapy.</p>
-                            </div>
-                        </div>
-                        <div className="flex gap-3 text-sm">
-                            <div className="w-2 h-2 mt-1.5 rounded-full bg-yellow-500 shrink-0"></div>
-                            <div>
-                                <span className="font-bold text-gray-700">Payment Received</span>
-                                <p className="text-gray-500 text-xs">$59.00 from Jnanesh Shetty.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+          <div className="font-medium text-gray-900">{member.name}</div>
+          <div className="text-sm text-gray-500">{member.email}</div>
         </div>
-    );
+      ),
+    },
+    {
+      key: "plan",
+      header: "Plan",
+      render: (member) => <Badge variant={member.plan === "Yoga Therapy" ? "purple" : "info"}>{member.plan}</Badge>,
+    },
+    {
+      key: "lastActive",
+      header: "Last Active",
+      render: (member) => (
+        <span className="text-sm text-gray-500">{member.lastActive}</span>
+      ),
+    },
+  ];
+
+  return (
+    <div>
+      <PageHeader
+        title="Dashboard"
+        subtitle="Welcome back! Here's what's happening with your yoga studio today."
+      />
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <StatCard
+          title="Active Members"
+          value={loading ? "—" : stats.activeMembers}
+          change={`+${stats.membersChange || 0}% from last month`}
+          changeType="positive"
+          trend="up"
+          icon={<FaUsers className="w-5 h-5" />}
+        />
+        <StatCard
+          title="Monthly Revenue"
+          value={loading ? "—" : `$${stats.mrr.toLocaleString()}`}
+          change={`${stats.mrrChange >= 0 ? '+' : ''}${stats.mrrChange || 0}% from last month`}
+          changeType={stats.mrrChange >= 0 ? "positive" : "negative"}
+          trend={stats.mrrChange >= 0 ? "up" : "down"}
+          icon={<FaDollarSign className="w-5 h-5" />}
+        />
+        <StatCard
+          title="Trial Users"
+          value={loading ? "—" : stats.trialUsers}
+          change="12 expiring soon"
+          changeType="warning"
+          icon={<FaClock className="w-5 h-5" />}
+        />
+        <StatCard
+          title="Pending Bookings"
+          value={loading ? "—" : stats.pendingBookings}
+          change="Action required"
+          changeType="neutral"
+          icon={<FaCalendarCheck className="w-5 h-5" />}
+        />
+      </div>
+
+      <div className="grid lg:grid-cols-3 gap-8">
+        {/* Quick Actions */}
+        <div className="lg:col-span-2">
+          <SectionCard
+            title="Quick Actions"
+            subtitle="Common tasks to get started"
+          >
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {quickActions.map((action) => (
+                <Link
+                  key={action.label}
+                  href={action.href}
+                  className="flex flex-col items-center gap-3 p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-all group"
+                >
+                  <div className={`w-12 h-12 ${action.color} rounded-xl flex items-center justify-center text-white shadow-sm group-hover:shadow-md transition-shadow`}>
+                    {action.icon}
+                  </div>
+                  <span className="text-sm font-medium text-gray-700">{action.label}</span>
+                </Link>
+              ))}
+            </div>
+          </SectionCard>
+        </div>
+
+        {/* Activity Feed */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+            <div>
+              <h3 className="font-bold text-gray-900">Recent Activity</h3>
+              <p className="text-sm text-gray-500">Latest updates</p>
+            </div>
+            <Link href="/admin/community" className="text-sm text-primary hover:text-primary/80 font-medium flex items-center gap-1">
+              View all <FaArrowRight className="text-xs" />
+            </Link>
+          </div>
+          <div className="divide-y divide-gray-100">
+            {recentActivity.map((activity) => (
+              <div key={activity.id} className="px-6 py-4 flex items-start gap-4 hover:bg-gray-50 transition-colors">
+                <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  {activityIcons[activity.type]}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-gray-700">{activity.message}</p>
+                  <p className="text-xs text-gray-400 mt-1">{activity.timestamp}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Upcoming Bookings & Top Members */}
+      <div className="grid lg:grid-cols-2 gap-8 mt-8">
+        {/* Upcoming Bookings */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+            <div>
+              <h3 className="font-bold text-gray-900">Upcoming Sessions</h3>
+              <p className="text-sm text-gray-500">Next 24 hours</p>
+            </div>
+            <Link href="/admin/bookings" className="text-sm text-primary hover:text-primary/80 font-medium flex items-center gap-1">
+              View all <FaArrowRight className="text-xs" />
+            </Link>
+          </div>
+          <div className="divide-y divide-gray-100">
+            {upcomingBookings.map((booking) => (
+              <div key={booking.id} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                    <FaCalendarCheck className="text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">{booking.memberName}</p>
+                    <p className="text-sm text-gray-500">{booking.type}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-medium text-gray-900">{booking.date}</p>
+                  <p className="text-sm text-gray-500">{booking.time}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Top Members */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+            <div>
+              <h3 className="font-bold text-gray-900">Active Members</h3>
+              <p className="text-sm text-gray-500">Most engaged members</p>
+            </div>
+            <Link href="/admin/users" className="text-sm text-primary hover:text-primary/80 font-medium flex items-center gap-1">
+              View all <FaArrowRight className="text-xs" />
+            </Link>
+          </div>
+          <DataTable
+            columns={memberColumns}
+            data={topMembers}
+            emptyMessage="No active members yet"
+          />
+        </div>
+      </div>
+    </div>
+  );
 }

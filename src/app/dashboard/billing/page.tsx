@@ -47,13 +47,13 @@ export default function BillingPage() {
                             <td className="p-4">Nov 22, 2025</td>
                             <td className="p-4">$59.00</td>
                             <td className="p-4 text-green-600 font-bold">Paid</td>
-                            <td className="p-4"><a href="#" className="text-primary hover:underline">Download</a></td>
+                            <td className="p-4"><a href="/dashboard/billing/invoice/1" className="text-primary hover:underline">Download</a></td>
                         </tr>
                         <tr>
                             <td className="p-4">Oct 22, 2025</td>
                             <td className="p-4">$59.00</td>
                             <td className="p-4 text-green-600 font-bold">Paid</td>
-                            <td className="p-4"><a href="#" className="text-primary hover:underline">Download</a></td>
+                            <td className="p-4"><a href="/dashboard/billing/invoice/1" className="text-primary hover:underline">Download</a></td>
                         </tr>
                     </tbody>
                 </table>

@@ -26,20 +26,20 @@ export default function LoginPage() {
 
     const handleQuickLogin = async (role: 'admin' | 'member_everyday' | 'member_therapy' | 'trial') => {
         let quickEmail = "";
-        const quickPassword = "Password123!";
+        const quickPassword = "admin123"; // Demo password
 
         switch (role) {
             case 'admin':
-                quickEmail = 'superadmin@shaktiyoga.com';
+                quickEmail = 'admin@shaktiyoga.com';
                 break;
             case 'member_everyday':
-                quickEmail = 'member.everyday@shaktiyoga.com';
+                quickEmail = 'member@shaktiyoga.com';
                 break;
             case 'member_therapy':
-                quickEmail = 'member.therapy@shaktiyoga.com';
+                quickEmail = 'teacher@shaktiyoga.com';
                 break;
             case 'trial':
-                quickEmail = 'trial@shaktiyoga.com';
+                quickEmail = 'member@shaktiyoga.com';
                 break;
         }
 
@@ -105,7 +105,7 @@ export default function LoginPage() {
                             <input type="checkbox" className="mr-2 text-primary focus:ring-primary" />
                             <span className="text-text/70">Remember me</span>
                         </label>
-                        <a href="#" className="text-primary hover:text-secondary transition-colors">Forgot password?</a>
+                        <a href="/forgot-password" className="text-primary hover:text-secondary transition-colors">Forgot password?</a>
                     </div>
 
                     <button
