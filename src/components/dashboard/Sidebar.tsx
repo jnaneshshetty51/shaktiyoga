@@ -1,6 +1,11 @@
+"use client";
+
 import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
 
 export default function Sidebar() {
+    const { user, logout } = useAuth();
+
     return (
         <aside className="hidden lg:flex w-64 bg-primary text-white h-screen fixed left-0 top-0 flex-col z-40">
             <div className="p-6 border-b border-white/10">
@@ -33,16 +38,19 @@ export default function Sidebar() {
             <div className="p-4 border-t border-white/10">
                 <div className="flex items-center gap-3 px-4 py-3">
                     <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center font-bold text-xs">
-                        JS
+                        {user?.name?.charAt(0) || 'U'}
                     </div>
                     <div className="text-sm">
-                        <div className="font-bold">Jnanesh S.</div>
-                        <div className="text-xs opacity-70">Member</div>
+                        <div className="font-bold">{user?.name || 'User'}</div>
+                        <div className="text-xs opacity-70 capitalize">{user?.role?.replace('_', ' ') || 'Member'}</div>
                     </div>
                 </div>
-                <Link href="/" className="block mt-2 text-xs text-center opacity-50 hover:opacity-100 uppercase tracking-widest">
+                <button 
+                    onClick={logout} 
+                    className="block w-full mt-2 text-xs text-center opacity-50 hover:opacity-100 uppercase tracking-widest cursor-pointer pb-2"
+                >
                     Sign Out
-                </Link>
+                </button>
             </div>
         </aside>
     );

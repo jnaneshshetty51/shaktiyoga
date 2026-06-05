@@ -1,4 +1,10 @@
+"use client";
+
+import { useCurrency } from '@/context/CurrencyContext';
+
 export default function BillingPage() {
+    const { formatPrice } = useCurrency();
+
     return (
         <div>
             <h1 className="font-serif text-3xl text-primary mb-8">Plan & Billing</h1>
@@ -7,7 +13,7 @@ export default function BillingPage() {
                 <div className="flex justify-between items-start mb-6">
                     <div>
                         <h3 className="font-serif text-xl text-text mb-2">Everyday Yoga Plan</h3>
-                        <p className="text-text/70 text-sm">$59.00 / month</p>
+                        <p className="text-text/70 text-sm">{formatPrice(4900, true)} / month</p>
                     </div>
                     <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-bold uppercase tracking-widest rounded">Active</span>
                 </div>
@@ -45,13 +51,13 @@ export default function BillingPage() {
                     <tbody className="divide-y divide-gray-100">
                         <tr>
                             <td className="p-4">Nov 22, 2025</td>
-                            <td className="p-4">$59.00</td>
+                            <td className="p-4">{formatPrice(4900, true)}</td>
                             <td className="p-4 text-green-600 font-bold">Paid</td>
                             <td className="p-4"><a href="/dashboard/billing/invoice/1" className="text-primary hover:underline">Download</a></td>
                         </tr>
                         <tr>
                             <td className="p-4">Oct 22, 2025</td>
-                            <td className="p-4">$59.00</td>
+                            <td className="p-4">{formatPrice(4900, true)}</td>
                             <td className="p-4 text-green-600 font-bold">Paid</td>
                             <td className="p-4"><a href="/dashboard/billing/invoice/1" className="text-primary hover:underline">Download</a></td>
                         </tr>

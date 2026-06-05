@@ -1,8 +1,30 @@
+"use client";
+
 import Image from 'next/image';
 import Link from 'next/link';
 import { FaArrowDown } from 'react-icons/fa';
+import { useCurrency } from '@/context/CurrencyContext';
+import { useEffect, useState } from 'react';
+
+interface SiteStats {
+    totalStudents: number;
+    countriesCount: number;
+    classesPerWeek: number;
+    classTimeIST: string;
+    hasWhatsAppSupport: boolean;
+}
 
 export default function Hero() {
+    const { formatPrice } = useCurrency();
+    const [stats, setStats] = useState<SiteStats | null>(null);
+
+    useEffect(() => {
+        fetch('/api/content/stats')
+            .then(res => res.json())
+            .then(data => setStats(data))
+            .catch(err => console.error('Failed to fetch stats:', err));
+    }, []);
+
     return (
         <section className="relative h-[92vh] min-h-[600px] w-full flex items-center justify-center text-center text-white overflow-hidden">
             {/* Background Image */}
@@ -47,19 +69,19 @@ export default function Hero() {
                     <Link href="/yoga-therapy/start" className="group px-8 py-4 bg-white/10 backdrop-blur-sm border-2 border-white/30 text-white font-sans text-sm uppercase tracking-widest rounded-full hover:bg-white hover:text-primary transition-all shadow-lg hover:shadow-xl">
                         <span className="flex items-center justify-center gap-2">
                             Book 1:1 Therapy
-                            <span className="opacity-70">($120/mo)</span>
+                            <span className="opacity-70">({formatPrice(9900)}/mo)</span>
                         </span>
                     </Link>
                 </div>
 
-                {/* Trust Indicators */}
+                {/* Trust Indicators - Fetched from API */}
                 <div className="flex flex-wrap justify-center gap-4 md:gap-8 mt-6 py-3 px-6 bg-black/20 backdrop-blur-sm rounded-full border border-white/10 text-xs md:text-sm animate-fade-in">
                     <span className="flex items-center gap-2">
-                        <span className="text-green-400">✓</span> 5 Live Classes/Week
+                        <span className="text-green-400">✓</span> {stats?.classesPerWeek || 5} Live Classes/Week
                     </span>
                     <span className="hidden sm:inline">·</span>
                     <span className="flex items-center gap-2">
-                        <span className="text-green-400">✓</span> Classes at 5:00 AM IST
+                        <span className="text-green-400">✓</span> Classes at {stats?.classTimeIST || '5:00 AM'} IST
                     </span>
                     <span className="hidden sm:inline">·</span>
                     <span className="flex items-center gap-2">
@@ -67,7 +89,7 @@ export default function Hero() {
                     </span>
                 </div>
 
-                {/* Social Proof */}
+                {/* Social Proof - Fetched from API */}
                 <div className="flex items-center gap-3 mt-4 animate-fade-in">
                     <div className="flex -space-x-3">
                         {[1, 2, 3, 4].map((i) => (
@@ -77,7 +99,7 @@ export default function Hero() {
                         ))}
                     </div>
                     <div className="text-left">
-                        <p className="text-sm font-semibold">200+ Students Worldwide</p>
+                        <p className="text-sm font-semibold">{stats?.totalStudents || 200}+ Students Worldwide</p>
                         <p className="text-xs opacity-70">NRIs from USA, UK, UAE, Australia</p>
                     </div>
                 </div>

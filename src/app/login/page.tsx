@@ -24,39 +24,7 @@ export default function LoginPage() {
         }
     };
 
-    const handleQuickLogin = async (role: 'admin' | 'member_everyday' | 'member_therapy' | 'trial') => {
-        let quickEmail = "";
-        const quickPassword = "admin123"; // Demo password
 
-        switch (role) {
-            case 'admin':
-                quickEmail = 'admin@shaktiyoga.com';
-                break;
-            case 'member_everyday':
-                quickEmail = 'member@shaktiyoga.com';
-                break;
-            case 'member_therapy':
-                quickEmail = 'teacher@shaktiyoga.com';
-                break;
-            case 'trial':
-                quickEmail = 'member@shaktiyoga.com';
-                break;
-        }
-
-        setEmail(quickEmail);
-        setPassword(quickPassword);
-
-        // Auto submit
-        setError("");
-        setLoading(true);
-        try {
-            await login(quickEmail, quickPassword);
-        } catch (err: any) {
-            setError(err.message || "Login failed");
-        } finally {
-            setLoading(false);
-        }
-    };
 
     return (
         <main className="min-h-screen flex items-center justify-center bg-accent/30 py-20 px-4">
@@ -117,23 +85,7 @@ export default function LoginPage() {
                     </button>
                 </form>
 
-                <div className="mt-8 pt-8 border-t border-gray-100">
-                    <p className="text-xs text-center text-gray-400 uppercase tracking-widest mb-4">Dev: Quick Login</p>
-                    <div className="grid grid-cols-2 gap-3">
-                        <button onClick={() => handleQuickLogin('admin')} className="p-2 text-xs bg-gray-100 hover:bg-gray-200 rounded text-gray-700 font-bold">
-                            Admin
-                        </button>
-                        <button onClick={() => handleQuickLogin('member_everyday')} className="p-2 text-xs bg-green-50 hover:bg-green-100 rounded text-green-700 font-bold">
-                            Member (Everyday)
-                        </button>
-                        <button onClick={() => handleQuickLogin('member_therapy')} className="p-2 text-xs bg-purple-50 hover:bg-purple-100 rounded text-purple-700 font-bold">
-                            Member (Therapy)
-                        </button>
-                        <button onClick={() => handleQuickLogin('trial')} className="p-2 text-xs bg-orange-50 hover:bg-orange-100 rounded text-orange-700 font-bold">
-                            Trial User
-                        </button>
-                    </div>
-                </div>
+
 
                 <div className="mt-8 text-center text-sm text-text/60">
                     Don't have an account? <Link href="/signup" className="text-primary font-bold hover:text-secondary">Sign up</Link>

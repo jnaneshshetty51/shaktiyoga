@@ -62,7 +62,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       children: [
         { name: "Blog Posts", href: "/admin/content" },
         { name: "Stories", href: "/admin/stories" },
-        { name: "Programs", href: "/programs" },
+        { name: "Programs", href: "/admin/programs" },
       ]
     },
     { name: "Settings", href: "/admin/settings", icon: <FaCog /> },

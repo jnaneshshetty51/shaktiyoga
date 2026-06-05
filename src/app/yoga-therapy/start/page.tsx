@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useCurrency } from '@/context/CurrencyContext';
 
 export default function TherapyStartPage() {
+    const { formatPrice } = useCurrency();
     return (
         <main className="min-h-screen flex items-center justify-center bg-accent/30 py-20 px-4">
             <div className="max-w-4xl w-full">
@@ -55,7 +57,7 @@ export default function TherapyStartPage() {
                             href="/checkout?plan=therapy"
                             className="block w-full py-3 bg-secondary text-white font-bold uppercase tracking-widest text-center rounded hover:bg-primary transition-colors shadow-md"
                         >
-                            Subscribe ($120/mo)
+                            Subscribe ({formatPrice(9900)}/mo)
                         </Link>
                     </div>
                 </div>

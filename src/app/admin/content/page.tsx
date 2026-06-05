@@ -23,7 +23,7 @@ interface BlogPost {
 }
 
 const categories = [
-  "All Categories" ,
+  "All Categories",
   "Yoga Tips",
   "Wellness",
   "Lifestyle",
@@ -49,6 +49,19 @@ export default function ContentPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [selectedPost, setSelectedPost] = useState<BlogPost | null>(null);
+  const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
+  const [formData, setFormData] = useState({
+    title: '',
+    category: 'Yoga Tips',
+    author: '',
+    excerpt: '',
+    content: '',
+    featuredImage: null as string | null,
+    metaTitle: '',
+    metaDescription: '',
+    status: 'DRAFT'
+  });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetchPosts();
@@ -60,11 +73,11 @@ export default function ContentPage() {
       const params = new URLSearchParams();
       if (activeTab !== "all") params.set("status", activeTab);
       if (selectedCategory !== "All Categories") params.set("category", selectedCategory);
-      
+
       const response = await fetch(`/api/admin/content?${params}`);
       if (response.ok) {
         const data = await response.json();
-        setPosts(data);
+        setPosts(data.blogPosts || []);
       }
     } catch (error) {
       console.error("Failed to fetch posts:", error);
@@ -81,6 +94,122 @@ export default function ContentPage() {
   const handlePreview = (post: BlogPost) => {
     setSelectedPost(post);
     setShowPreviewModal(true);
+  };
+
+  const handleEdit = (post: BlogPost) => {
+    setEditingPost(post);
+    setFormData({
+      title: post.title,
+      category: post.category,
+      author: post.author,
+      excerpt: post.excerpt || '',
+      content: post.content,
+      featuredImage: post.featuredImage,
+      metaTitle: post.metaTitle || '',
+      metaDescription: post.metaDescription || '',
+      status: post.status
+    });
+    setShowAddModal(true);
+  };
+
+  const handleDelete = async (post: BlogPost) => {
+    if (!confirm(`Are you sure you want to delete "${post.title}"?`)) return;
+
+    try {
+      const response = await fetch(`/api/admin/content/${post.id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setPosts(posts.filter(p => p.id !== post.id));
+      } else {
+        alert('Failed to delete post');
+      }
+    } catch (error) {
+      console.error('Failed to delete post:', error);
+      alert('Failed to delete post');
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    setSaving(true);
+    try {
+      const url = editingPost
+        ? `/api/admin/content/${editingPost.id}`
+        : '/api/admin/content';
+      const method = editingPost ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          status: 'DRAFT'
+        }),
+      });
+
+      if (response.ok) {
+        setShowAddModal(false);
+        setEditingPost(null);
+        resetForm();
+        fetchPosts();
+      } else {
+        alert('Failed to save draft');
+      }
+    } catch (error) {
+      console.error('Failed to save draft:', error);
+      alert('Failed to save draft');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handlePublish = async () => {
+    setSaving(true);
+    try {
+      const url = editingPost
+        ? `/api/admin/content/${editingPost.id}`
+        : '/api/admin/content';
+      const method = editingPost ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          status: 'PUBLISHED',
+          publishedAt: new Date().toISOString()
+        }),
+      });
+
+      if (response.ok) {
+        setShowAddModal(false);
+        setEditingPost(null);
+        resetForm();
+        fetchPosts();
+      } else {
+        alert('Failed to publish post');
+      }
+    } catch (error) {
+      console.error('Failed to publish:', error);
+      alert('Failed to publish');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      category: 'Yoga Tips',
+      author: '',
+      excerpt: '',
+      content: '',
+      featuredImage: null,
+      metaTitle: '',
+      metaDescription: '',
+      status: 'DRAFT'
+    });
   };
 
   const columns: Column<BlogPost & { actions?: string }>[] = [
@@ -134,8 +263,8 @@ export default function ContentPage() {
           {post.publishedAt
             ? new Date(post.publishedAt).toLocaleDateString()
             : post.status === "PUBLISHED"
-            ? "—"
-            : "—"}
+              ? "—"
+              : "—"}
         </div>
       ),
     },
@@ -161,12 +290,14 @@ export default function ContentPage() {
             <FaEye className="text-gray-500" />
           </button>
           <button
+            onClick={() => handleEdit(post)}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             title="Edit"
           >
             <FaEdit className="text-gray-500" />
           </button>
           <button
+            onClick={() => handleDelete(post)}
             className="p-2 hover:bg-red-50 rounded-lg transition-colors"
             title="Delete"
           >
@@ -202,12 +333,12 @@ export default function ContentPage() {
 
       {/* Filters */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
-        <Tabs 
-          tabs={tabs.map(t => ({ ...t, count: counts[t.value as keyof typeof counts] || 0 }))} 
-          activeTab={activeTab} 
-          onChange={setActiveTab} 
+        <Tabs
+          tabs={tabs.map(t => ({ ...t, count: counts[t.value as keyof typeof counts] || 0 }))}
+          activeTab={activeTab}
+          onChange={setActiveTab}
         />
-        
+
         <div className="flex items-center gap-4">
           <select
             value={selectedCategory}
@@ -218,7 +349,7 @@ export default function ContentPage() {
               <option key={cat} value={cat}>{cat}</option>
             ))}
           </select>
-          
+
           <form onSubmit={handleSearch} className="flex items-center">
             <div className="relative">
               <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -259,23 +390,25 @@ export default function ContentPage() {
       {/* Add/Edit Modal */}
       <Modal
         isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        title="Create New Post"
-        subtitle="Write and publish a new blog post"
+        onClose={() => { setShowAddModal(false); setEditingPost(null); resetForm(); }}
+        title={editingPost ? "Edit Post" : "Create New Post"}
+        subtitle={editingPost ? "Update your blog post" : "Write and publish a new blog post"}
         size="xl"
         footer={
           <div className="flex gap-3 justify-end">
             <button
-              onClick={() => setShowAddModal(false)}
-              className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              onClick={handleSaveDraft}
+              disabled={saving}
+              className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
             >
-              Save as Draft
+              {saving ? 'Saving...' : 'Save as Draft'}
             </button>
             <button
-              onClick={() => setShowAddModal(false)}
-              className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors"
+              onClick={handlePublish}
+              disabled={saving}
+              className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
-              Publish
+              {saving ? 'Publishing...' : 'Publish'}
             </button>
           </div>
         }
@@ -285,6 +418,8 @@ export default function ContentPage() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
             <input
               type="text"
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
               placeholder="Enter post title"
             />
@@ -293,7 +428,11 @@ export default function ContentPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
-              <select className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
+              <select
+                value={formData.category}
+                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              >
                 <option>Yoga Tips</option>
                 <option>Wellness</option>
                 <option>Lifestyle</option>
@@ -307,6 +446,8 @@ export default function ContentPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Author *</label>
               <input
                 type="text"
+                value={formData.author}
+                onChange={(e) => setFormData({ ...formData, author: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 placeholder="Author name"
               />
@@ -317,6 +458,8 @@ export default function ContentPage() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Excerpt</label>
             <textarea
               rows={2}
+              value={formData.excerpt}
+              onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
               className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
               placeholder="Brief description for previews and SEO..."
             />
@@ -342,6 +485,8 @@ export default function ContentPage() {
               </div>
               <textarea
                 rows={12}
+                value={formData.content}
+                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
                 className="w-full px-4 py-3 text-sm focus:outline-none resize-none"
                 placeholder="Write your blog post content here..."
               />
@@ -362,6 +507,8 @@ export default function ContentPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Meta Title (SEO)</label>
                 <input
                   type="text"
+                  value={formData.metaTitle}
+                  onChange={(e) => setFormData({ ...formData, metaTitle: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                   placeholder="SEO optimized title"
                 />
@@ -370,6 +517,8 @@ export default function ContentPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Meta Description (SEO)</label>
                 <textarea
                   rows={3}
+                  value={formData.metaDescription}
+                  onChange={(e) => setFormData({ ...formData, metaDescription: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
                   placeholder="Description for search engines..."
                 />

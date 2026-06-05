@@ -1,7 +1,12 @@
+"use client";
+
 import Image from 'next/image';
 import Link from 'next/link';
+import { useCurrency } from '@/context/CurrencyContext';
 
 export default function YogaTherapy() {
+    const { formatPrice } = useCurrency();
+
     return (
         <section id="therapy" className="py-20 px-8 bg-background">
             <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-12">
@@ -39,7 +44,7 @@ export default function YogaTherapy() {
 
                     <div className="flex flex-col sm:flex-row gap-4">
                         <Link href="/yoga-therapy/start" className="px-8 py-3 bg-primary text-white font-sans text-sm uppercase tracking-widest rounded hover:bg-secondary transition-colors text-center">
-                            Book Therapy Plan ($120/mo)
+                            Book Therapy Plan ({formatPrice(9900)}/mo)
                         </Link>
                         <Link href="/yoga-therapy/start" className="px-8 py-3 border border-primary text-primary font-sans text-sm uppercase tracking-widest rounded hover:bg-primary/5 transition-colors text-center">
                             Talk to Us First

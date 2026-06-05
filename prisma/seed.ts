@@ -270,7 +270,7 @@ async function main() {
       author: 'Yoga Teacher',
       publishedAt: new Date(),
       status: 'PUBLISHED',
-      imageUrl: '/blog/morning-yoga.jpg',
+      featuredImage: '/blog/morning-yoga.jpg',
     },
   });
   console.log('✅ Created Blog Post:', blog1.title);
@@ -285,7 +285,7 @@ async function main() {
       author: 'Yoga Teacher',
       publishedAt: new Date(),
       status: 'PUBLISHED',
-      imageUrl: '/blog/back-pain.jpg',
+      featuredImage: '/blog/back-pain.jpg',
     },
   });
   console.log('✅ Created Blog Post:', blog2.title);
@@ -299,7 +299,7 @@ async function main() {
       category: 'Beginners',
       author: 'Yoga Teacher',
       status: 'DRAFT',
-      imageUrl: '/blog/beginners-guide.jpg',
+      featuredImage: '/blog/beginners-guide.jpg',
     },
   });
   console.log('✅ Created Blog Post:', blog3.title);

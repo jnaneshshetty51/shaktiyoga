@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import DTable from "@/components/admin/DTable";
 
 export type User = {
@@ -14,26 +15,84 @@ export type User = {
     joinedAt: string;
 };
 
-export default function AdminUsersPage() {
+function UsersDashboard() {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    
+    // Modal state
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [editingUserId, setEditingUserId] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [formData, setFormData] = useState({ name: '', email: '', role: 'MEMBER_EVERYDAY' });
+    const [error, setError] = useState('');
 
     useEffect(() => {
-        async function fetchUsers() {
-            try {
-                const response = await fetch('/api/admin/users');
-                if (response.ok) {
-                    const data = await response.json();
-                    setUsers(data.users || []);
-                }
-            } catch (error) {
-                console.error('Failed to fetch users:', error);
-            } finally {
-                setLoading(false);
-            }
+        if (searchParams.get('action') === 'add') {
+            setIsModalOpen(true);
+            setIsEditMode(false);
         }
         fetchUsers();
-    }, []);
+    }, [searchParams]);
+
+    async function fetchUsers() {
+        setLoading(true);
+        try {
+            const response = await fetch('/api/admin/users');
+            if (response.ok) {
+                const data = await response.json();
+                setUsers(data.users || []);
+            }
+        } catch (error) {
+            console.error('Failed to fetch users:', error);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        setIsSubmitting(true);
+
+        const url = isEditMode ? `/api/admin/users/${editingUserId}` : '/api/admin/users';
+        const method = isEditMode ? 'PUT' : 'POST';
+
+        try {
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data.error || `Failed to ${isEditMode ? 'update' : 'create'} user`);
+            }
+
+            // Success
+            setIsModalOpen(false);
+            setFormData({ name: '', email: '', role: 'MEMBER_EVERYDAY' });
+            setEditingUserId(null);
+            
+            if (!isEditMode && searchParams.get('action') === 'add') {
+                router.replace('/admin/users'); // remove action=add from URL
+            }
+            
+            fetchUsers(); // refresh data
+            
+            if (!isEditMode) {
+                alert('User added successfully! Their temporary password is: TempPassword123!');
+            }
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     const columns = [
         { header: "Name", accessor: "name" as keyof User, className: "font-bold text-gray-800", sortable: true },
         { header: "Email", accessor: "email" as keyof User, sortable: true },
@@ -41,7 +100,7 @@ export default function AdminUsersPage() {
             header: "Role",
             accessor: (user: User) => (
                 <span className="capitalize bg-gray-100 px-2 py-1 rounded text-xs text-gray-600">
-                    {user.role.replace('member_', '').replace('_', ' ')}
+                    {user.role.replace('MEMBER_', '').replace('SUPER_', '').replace('_', ' ')}
                 </span>
             ),
             sortable: true
@@ -75,30 +134,55 @@ export default function AdminUsersPage() {
             key: 'role',
             label: 'Role',
             options: [
-                { label: 'Everyday Yoga', value: 'member_everyday' },
-                { label: 'Yoga Therapy', value: 'member_therapy' },
-                { label: 'Trial User', value: 'trial' },
+                { label: 'Everyday Yoga', value: 'MEMBER_EVERYDAY' },
+                { label: 'Yoga Therapy', value: 'MEMBER_THERAPY' },
+                { label: 'Trial User', value: 'TRIAL' },
+                { label: 'Staff / Admin', value: 'SUPER_ADMIN' },
             ]
         }
     ];
 
-    const handleCreate = () => {
-        alert("Create User Modal would open here.");
-    };
-
     const handleEdit = (user: User) => {
-        alert(`Edit User: ${user.name}`);
+        setFormData({ name: user.name, email: user.email, role: user.role });
+        setEditingUserId(user.id);
+        setIsEditMode(true);
+        setIsModalOpen(true);
     };
 
-    const handleDelete = (user: User) => {
-        if (confirm(`Are you sure you want to delete ${user.name}?`)) {
-            alert("User deleted (mock).");
+    const handleDelete = async (user: User) => {
+        if (confirm(`Are you sure you want to delete ${user.name}?\n\nThis cannot be undone.`)) {
+            try {
+                const res = await fetch(`/api/admin/users/${user.id}`, { method: 'DELETE' });
+                const data = await res.json();
+                
+                if (!res.ok) {
+                    throw new Error(data.error || 'Failed to delete user');
+                }
+                
+                fetchUsers();
+            } catch (err: any) {
+                alert(`Error: ${err.message}`);
+            }
         }
     };
 
-    const handleBulkDelete = (ids: string[]) => {
+    const handleBulkDelete = async (ids: string[]) => {
         if (confirm(`Are you sure you want to delete ${ids.length} users?`)) {
-            alert(`Deleted users: ${ids.join(', ')} (mock)`);
+            let successCount = 0;
+            let failCount = 0;
+            
+            for (const id of ids) {
+                try {
+                    const res = await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
+                    if (res.ok) successCount++;
+                    else failCount++;
+                } catch (e) {
+                    failCount++;
+                }
+            }
+            
+            alert(`Bulk delete complete. Successfully deleted ${successCount} users. Failed: ${failCount}`);
+            fetchUsers();
         }
     };
 
@@ -128,7 +212,11 @@ export default function AdminUsersPage() {
                 searchable={true}
                 filters={filters}
                 enableBulkActions={true}
-                onCreate={handleCreate}
+                onCreate={() => {
+                    setFormData({ name: '', email: '', role: 'MEMBER_EVERYDAY' });
+                    setIsEditMode(false);
+                    setIsModalOpen(true);
+                }}
                 onBulkDelete={handleBulkDelete}
                 actions={(user) => (
                     <div className="flex justify-end gap-2">
@@ -137,6 +225,91 @@ export default function AdminUsersPage() {
                     </div>
                 )}
             />
+
+            {/* Add/Edit Member Modal */}
+            {isModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="font-serif text-2xl text-primary">{isEditMode ? 'Edit Member' : 'Add New Member'}</h2>
+                            <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
+                        </div>
+                        
+                        {error && (
+                            <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded border border-red-100">
+                                {error}
+                            </div>
+                        )}
+
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1">Full Name</label>
+                                <input 
+                                    type="text" 
+                                    required
+                                    value={formData.name}
+                                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                    className="w-full p-2 border border-gray-200 rounded focus:border-primary focus:outline-none" 
+                                    placeholder="Jane Doe"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1">Email Address</label>
+                                <input 
+                                    type="email" 
+                                    required
+                                    value={formData.email}
+                                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                                    className="w-full p-2 border border-gray-200 rounded focus:border-primary focus:outline-none disabled:bg-gray-50" 
+                                    placeholder="jane@example.com"
+                                    disabled={isEditMode} // Usually we don't want to edit emails freely, but if we do, we can remove disabled
+                                />
+                                {isEditMode && <p className="text-[10px] text-gray-400 mt-1">Email addresses cannot be changed.</p>}
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1">Assigned Role</label>
+                                <select 
+                                    value={formData.role}
+                                    onChange={(e) => setFormData({...formData, role: e.target.value})}
+                                    className="w-full p-2 border border-gray-200 rounded focus:border-primary focus:outline-none bg-white"
+                                >
+                                    <option value="VISITOR">Visitor (No Access)</option>
+                                    <option value="TRIAL">Trial User</option>
+                                    <option value="MEMBER_EVERYDAY">Member - Everyday Yoga</option>
+                                    <option value="MEMBER_THERAPY">Member - Yoga Therapy</option>
+                                    <option value="TEACHER">Yoga Teacher</option>
+                                    <option value="SUPER_ADMIN">Admin / Staff</option>
+                                </select>
+                            </div>
+                            
+                            <div className="pt-4 flex gap-3">
+                                <button 
+                                    type="button" 
+                                    onClick={() => setIsModalOpen(false)}
+                                    className="flex-1 py-2 border border-gray-200 text-gray-600 font-bold uppercase tracking-widest rounded hover:bg-gray-50 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    type="submit" 
+                                    disabled={isSubmitting}
+                                    className="flex-1 py-2 bg-primary text-white font-bold uppercase tracking-widest rounded hover:bg-secondary transition-colors disabled:opacity-50"
+                                >
+                                    {isSubmitting ? 'Saving...' : (isEditMode ? 'Save Changes' : 'Add User')}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
+    );
+}
+
+export default function AdminUsersPage() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <UsersDashboard />
+        </Suspense>
     );
 }

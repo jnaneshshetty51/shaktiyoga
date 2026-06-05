@@ -1,19 +1,90 @@
 "use client";
 
-import { useState } from "react";
-import { stories, Story } from "@/utils/content";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+
+interface Story {
+    id: string;
+    authorName: string;
+    location: string | null;
+    planType: string | null;
+    quote: string;
+    beforeAfter?: string;
+    rating: number;
+    imageUrl: string | null;
+}
+
+// Fallback stories for when API fails
+const FALLBACK_STORIES: Story[] = [
+    {
+        id: '1',
+        authorName: 'Priya Sharma',
+        location: 'London, UK',
+        planType: 'NRI',
+        quote: "I never thought online yoga could be this effective. My back pain is gone after 3 months of therapy.",
+        beforeAfter: "Before: Chronic lower back pain, unable to sit for long hours. After: Pain-free, improved posture and flexibility.",
+        rating: 5,
+        imageUrl: null
+    },
+    {
+        id: '2',
+        authorName: 'Rahul Mehta',
+        location: 'California, USA',
+        planType: 'Everyday Yoga',
+        quote: "The everyday classes help me stay grounded despite my hectic work schedule. It's my daily sanctuary.",
+        rating: 5,
+        imageUrl: null
+    },
+    {
+        id: '3',
+        authorName: 'Sarah Jenkins',
+        location: 'Dubai, UAE',
+        planType: 'NRI',
+        quote: "Authentic, traditional, yet so accessible. The teachers really care about your progress.",
+        rating: 4,
+        imageUrl: null
+    }
+];
 
 export default function StoriesPage() {
     const [filter, setFilter] = useState<string>("All");
+    const [stories, setStories] = useState<Story[]>(FALLBACK_STORIES);
+
+    useEffect(() => {
+        fetch('/api/content/testimonials')
+            .then(res => res.json())
+            .then(data => {
+                // Transform API data to match Story interface
+                const transformedStories = data.map((s: any) => ({
+                    id: s.id,
+                    authorName: s.authorName || s.name || 'Anonymous',
+                    location: s.location,
+                    planType: s.planType,
+                    quote: s.quote,
+                    beforeAfter: s.beforeAfter,
+                    rating: s.rating || 5,
+                    imageUrl: s.imageUrl || null
+                }));
+                setStories(transformedStories);
+            })
+            .catch(err => console.error('Failed to fetch stories:', err));
+    }, []);
+
+    // Map plan types to filter categories
+    const getPlanCategory = (planType: string | null): string => {
+        if (!planType) return 'All';
+        const upper = planType.toUpperCase();
+        if (upper.includes('NRI')) return 'NRI';
+        if (upper.includes('THERAPY')) return 'Therapy';
+        if (upper.includes('EVERYDAY')) return 'Everyday Yoga';
+        return 'All';
+    };
 
     const filteredStories = filter === "All"
         ? stories
         : stories.filter(story => {
-            if (filter === "NRI") return story.plan === "NRI";
-            if (filter === "Therapy") return story.plan === "Therapy";
-            if (filter === "Everyday Yoga") return story.plan === "Everyday Yoga";
-            return true;
+            const category = getPlanCategory(story.planType);
+            return category === filter;
         });
 
     return (
@@ -59,16 +130,16 @@ export default function StoriesPage() {
                                 <div key={story.id} className="bg-white p-8 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex flex-col">
                                     <div className="flex justify-between items-start mb-6">
                                         <div>
-                                            <h3 className="font-serif text-xl text-gray-800">{story.name}</h3>
-                                            <p className="text-xs text-gray-500 uppercase tracking-widest">{story.location}</p>
+                                            <h3 className="font-serif text-xl text-gray-800">{story.authorName}</h3>
+                                            <p className="text-xs text-gray-500 uppercase tracking-widest">{story.location || 'Global'}</p>
                                         </div>
                                         <span className="px-2 py-1 bg-accent/20 text-secondary text-[10px] font-bold uppercase tracking-widest rounded">
-                                            {story.plan}
+                                            {story.planType || 'Member'}
                                         </span>
                                     </div>
 
                                     <div className="mb-6 flex-grow">
-                                        <div className="text-secondary text-4xl font-serif leading-none mb-2">“</div>
+                                        <div className="text-secondary text-4xl font-serif leading-none mb-2">"</div>
                                         <p className="text-gray-700 italic relative z-10 pl-4">
                                             {story.quote}
                                         </p>

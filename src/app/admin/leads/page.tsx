@@ -1,367 +1,383 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { PageHeader, Tabs, EmptyState, Modal } from "@/components/admin";
-import { DataTable, Column } from "@/components/admin";
-import { StatusBadge, Badge } from "@/components/admin";
-import { FaPlus, FaSearch, FaFilter, FaUserPlus } from "react-icons/fa";
-import { FormField, SelectField, validateEmail, validateRequired, validatePhone, useTypeahead } from "@/components/admin";
+import { useEffect, useState, Suspense } from "react";
+import DTable from "@/components/admin/DTable";
+import { formatDistanceToNow } from "date-fns";
 
-interface Lead {
-  id: string;
-  name: string;
-  email: string;
-  phone: string | null;
-  country: string | null;
-  source: string;
-  status: string;
-  notes: string | null;
-  trialRequestedAt: string | null;
-  trialDate: string | null;
-  trialAttended: boolean | null;
-  createdAt: string;
-  assignedTo: { id: string; name: string } | null;
-  _count: { activities: number };
+export type Lead = {
+    id: string;
+    name: string;
+    email: string;
+    phone: string | null;
+    country: string | null;
+    source: 'WEBSITE' | 'WHATSAPP' | 'REFERRAL' | 'SOCIAL_MEDIA' | 'OTHER';
+    status: 'NEW' | 'CONTACTED' | 'TRIAL' | 'CONVERTED' | 'LOST';
+    notes: string | null;
+    trialRequestedAt: string | null;
+    trialDate: string | null;
+    trialAttended: boolean;
+    createdAt: string;
+    assignedTo: { id: string, name: string } | null;
+    _count: { activities: number };
+};
+
+function LeadsDashboard() {
+    const [leads, setLeads] = useState<Lead[]>([]);
+    const [loading, setLoading] = useState(true);
+    
+    // Modal State
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    const [formData, setFormData] = useState({
+        name: '',
+        email: '',
+        phone: '',
+        country: '',
+        status: 'NEW',
+        source: 'WEBSITE',
+        notes: '',
+        assignedToId: ''
+    });
+    
+    const [staffList, setStaffList] = useState<{id: string, name: string}[]>([]);
+
+    useEffect(() => {
+        fetchLeads();
+        fetchStaffList();
+    }, []);
+
+    async function fetchLeads() {
+        setLoading(true);
+        try {
+            const response = await fetch('/api/admin/leads');
+            if (response.ok) {
+                const data = await response.json();
+                setLeads(data || []);
+            }
+        } catch (error) {
+            console.error('Failed to fetch leads:', error);
+        } finally {
+            setLoading(false);
+        }
+    }
+    
+    async function fetchStaffList() {
+        try {
+            const response = await fetch('/api/admin/users');
+            if (response.ok) {
+                const data = await response.json();
+                const staff = (data.users || []).filter((u:any) => u.role === 'SUPER_ADMIN' || u.role === 'STAFF_ADMIN');
+                setStaffList(staff);
+            }
+        } catch (error) {
+            console.error('Failed to fetch staff list:', error);
+        }
+    }
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+        
+        const url = isEditMode ? `/api/admin/leads/${editingLeadId}` : '/api/admin/leads';
+        const method = isEditMode ? 'PUT' : 'POST';
+        
+        try {
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+            const data = await res.json();
+            
+            if (!res.ok) {
+                throw new Error(data.error || `Failed to ${isEditMode ? 'update' : 'create'} lead`);
+            }
+            
+            setIsModalOpen(false);
+            setEditingLeadId(null);
+            fetchLeads();
+        } catch (err: any) {
+            alert(`Error: ${err.message}`);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleCreate = () => {
+        setIsEditMode(false);
+        setFormData({
+            name: '',
+            email: '',
+            phone: '',
+            country: '',
+            status: 'NEW',
+            source: 'WEBSITE',
+            notes: '',
+            assignedToId: ''
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleEdit = (lead: Lead) => {
+        setFormData({
+            name: lead.name,
+            email: lead.email,
+            phone: lead.phone || '',
+            country: lead.country || '',
+            status: lead.status,
+            source: lead.source,
+            notes: lead.notes || '',
+            assignedToId: lead.assignedTo?.id || ''
+        });
+        setEditingLeadId(lead.id);
+        setIsEditMode(true);
+        setIsModalOpen(true);
+    };
+
+    const handleDelete = async (lead: Lead) => {
+        if (confirm(`Are you sure you want to delete lead: ${lead.name}?`)) {
+            try {
+                const res = await fetch(`/api/admin/leads/${lead.id}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error('Failed to delete lead');
+                fetchLeads();
+            } catch (err: any) {
+                alert(`Error: ${err.message}`);
+            }
+        }
+    };
+
+    const getStatusStyle = (status: string) => {
+        switch (status) {
+            case 'NEW': return 'bg-blue-100 text-blue-800 border-blue-200';
+            case 'CONTACTED': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+            case 'TRIAL': return 'bg-purple-100 text-purple-800 border-purple-200';
+            case 'CONVERTED': return 'bg-green-100 text-green-800 border-green-200';
+            case 'LOST': return 'bg-red-100 text-red-800 border-red-200';
+            default: return 'bg-gray-100 text-gray-800';
+        }
+    };
+
+    const columns = [
+        {
+            header: "Contact Info",
+            accessor: (lead: Lead) => (
+                <div>
+                    <div className="font-bold text-gray-900">{lead.name}</div>
+                    <div className="text-xs text-gray-500">{lead.email}</div>
+                    {lead.phone && <div className="text-xs text-gray-500">{lead.phone}</div>}
+                </div>
+            )
+        },
+        {
+            header: "Source",
+            accessor: (lead: Lead) => (
+                <span className="capitalize text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                    {lead.source.replace('_', ' ')}
+                </span>
+            )
+        },
+        {
+            header: "Status",
+            accessor: (lead: Lead) => (
+                <span className={`px-2 py-1 rounded text-xs font-bold uppercase tracking-wider border ${getStatusStyle(lead.status)}`}>
+                    {lead.status}
+                </span>
+            ),
+            sortable: true
+        },
+        {
+            header: "Assigned To",
+            accessor: (lead: Lead) => lead.assignedTo ? lead.assignedTo.name : <span className="text-gray-400 italic">Unassigned</span>
+        },
+        {
+            header: "Last Activity",
+            accessor: (lead: Lead) => (
+                <div>
+                    <div className="text-sm">{formatDistanceToNow(new Date(lead.createdAt), { addSuffix: true })}</div>
+                    <div className="text-xs text-gray-500">{lead._count.activities} interactions</div>
+                </div>
+            )
+        }
+    ];
+
+    if (loading) {
+        return (
+            <div>
+                <div className="mb-8 flex justify-between items-end">
+                    <div>
+                        <h1 className="font-serif text-3xl text-gray-800 mb-2">Leads CRM</h1>
+                        <p className="text-gray-500">Track and manage potential members from inquiry to conversion.</p>
+                    </div>
+                </div>
+                <div className="text-gray-500">Loading...</div>
+            </div>
+        );
+    }
+
+    return (
+        <div>
+            <div className="mb-8 flex justify-between items-end">
+                <div>
+                    <h1 className="font-serif text-3xl text-gray-800 mb-2">Leads CRM</h1>
+                    <p className="text-gray-500">Track and manage potential members from inquiry to conversion.</p>
+                </div>
+            </div>
+
+            <DTable
+                data={leads}
+                columns={columns}
+                title="All Leads"
+                onCreate={handleCreate}
+                actions={(lead) => (
+                    <div className="flex justify-end gap-2">
+                        <button onClick={() => handleEdit(lead)} className="text-primary hover:text-secondary text-xs font-bold uppercase tracking-wider">Update</button>
+                        <button onClick={() => handleDelete(lead)} className="text-red-400 hover:text-red-600 text-xs font-bold uppercase tracking-wider">Delete</button>
+                    </div>
+                )}
+            />
+
+            {/* Modal */}
+            {isModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="font-serif text-2xl text-primary">{isEditMode ? 'Update Lead' : 'Add New Lead'}</h2>
+                            <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1">Name</label>
+                                    <input 
+                                        type="text" 
+                                        required
+                                        value={formData.name}
+                                        onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                        className="w-full p-2 border border-gray-200 rounded focus:border-primary focus:outline-none" 
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1">Email</label>
+                                    <input 
+                                        type="email" 
+                                        required
+                                        value={formData.email}
+                                        onChange={(e) => setFormData({...formData, email: e.target.value})}
+                                        className="w-full p-2 border border-gray-200 rounded focus:border-primary focus:outline-none" 
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1">Phone</label>
+                                    <input 
+                                        type="text" 
+                                        value={formData.phone}
+                                        onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                                        className="w-full p-2 border border-gray-200 rounded focus:border-primary focus:outline-none" 
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1">Country</label>
+                                    <input 
+                                        type="text" 
+                                        value={formData.country}
+                                        onChange={(e) => setFormData({...formData, country: e.target.value})}
+                                        className="w-full p-2 border border-gray-200 rounded focus:border-primary focus:outline-none" 
+                                    />
+                                </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1">Lead Source</label>
+                                    <select 
+                                        value={formData.source}
+                                        onChange={(e) => setFormData({...formData, source: e.target.value as any})}
+                                        className="w-full p-2 border border-gray-200 rounded focus:border-primary focus:outline-none bg-white"
+                                        disabled={isEditMode}
+                                    >
+                                        <option value="WEBSITE">Website</option>
+                                        <option value="WHATSAPP">WhatsApp</option>
+                                        <option value="REFERRAL">Referral</option>
+                                        <option value="SOCIAL_MEDIA">Social Media</option>
+                                        <option value="OTHER">Other</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1">Status</label>
+                                    <select 
+                                        value={formData.status}
+                                        onChange={(e) => setFormData({...formData, status: e.target.value as any})}
+                                        className="w-full p-2 border border-gray-200 rounded focus:border-primary focus:outline-none bg-white"
+                                    >
+                                        <option value="NEW">New</option>
+                                        <option value="CONTACTED">Contacted</option>
+                                        <option value="TRIAL">Trial Scheduled/Attended</option>
+                                        <option value="CONVERTED">Converted</option>
+                                        <option value="LOST">Lost</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1">Assign To (Staff)</label>
+                                <select 
+                                    value={formData.assignedToId}
+                                    onChange={(e) => setFormData({...formData, assignedToId: e.target.value})}
+                                    className="w-full p-2 border border-gray-200 rounded focus:border-primary focus:outline-none bg-white"
+                                >
+                                    <option value="">Unassigned</option>
+                                    {staffList.map(s => (
+                                        <option key={s.id} value={s.id}>{s.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1">Notes</label>
+                                <textarea 
+                                    rows={3}
+                                    value={formData.notes}
+                                    onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                                    className="w-full p-2 border border-gray-200 rounded focus:border-primary focus:outline-none" 
+                                    placeholder="Add any specific context here..."
+                                />
+                            </div>
+
+                            <div className="pt-4 flex gap-3">
+                                <button 
+                                    type="button" 
+                                    onClick={() => setIsModalOpen(false)}
+                                    className="flex-1 py-2 border border-gray-200 text-gray-600 font-bold uppercase tracking-widest rounded hover:bg-gray-50 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    type="submit" 
+                                    disabled={isSubmitting}
+                                    className="flex-1 py-2 bg-primary text-white font-bold uppercase tracking-widest rounded hover:bg-secondary transition-colors disabled:opacity-50"
+                                >
+                                    {isSubmitting ? 'Saving...' : (isEditMode ? 'Update Lead' : 'Add Lead')}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
 }
 
-const tabs = [
-  { label: "All Leads", value: "all" },
-  { label: "New", value: "NEW" },
-  { label: "Contacted", value: "CONTACTED" },
-  { label: "Trial", value: "TRIAL" },
-  { label: "Converted", value: "CONVERTED" },
-  { label: "Lost", value: "LOST" },
-];
-
-const sourceOptions = [
-  { value: "WEBSITE", label: "Website" },
-  { value: "WHATSAPP", label: "WhatsApp" },
-  { value: "REFERRAL", label: "Referral" },
-  { value: "SOCIAL_MEDIA", label: "Social Media" },
-  { value: "OTHER", label: "Other" },
-];
-
-const statusOptions = [
-  { value: "NEW", label: "New" },
-  { value: "CONTACTED", label: "Contacted" },
-  { value: "TRIAL", label: "Trial" },
-  { value: "CONVERTED", label: "Converted" },
-  { value: "LOST", label: "Lost" },
-];
-
-export default function LeadsPage() {
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("all");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    country: "",
-    source: "WEBSITE",
-    status: "NEW",
-    notes: "",
-  });
-  const [touched, setTouched] = useState<Record<string, boolean>>({});
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleFormBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name } = e.target;
-    setTouched((prev) => ({ ...prev, [name]: true }));
-    
-    // Validate
-    let error: string | undefined;
-    if (name === "name") error = validateRequired(formData.name, "Name");
-    if (name === "email") error = validateEmail(formData.email);
-    setErrors((prev) => ({ ...prev, [name]: error || "" }));
-  };
-
-  useEffect(() => {
-    fetchLeads();
-  }, [activeTab]);
-
-  const fetchLeads = async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (activeTab !== "all") params.set("status", activeTab);
-      if (searchQuery) params.set("search", searchQuery);
-
-      const response = await fetch(`/api/admin/leads?${params}`);
-      if (response.ok) {
-        const data = await response.json();
-        setLeads(data);
-      }
-    } catch (error) {
-      console.error("Failed to fetch leads:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    fetchLeads();
-  };
-
-  const columns: Column<Lead>[] = [
-    {
-      key: "name",
-      header: "Name",
-      render: (lead) => (
-        <div>
-          <div className="font-medium text-gray-900">{lead.name}</div>
-          <div className="text-gray-500 text-sm">{lead.email}</div>
-        </div>
-      ),
-    },
-    {
-      key: "phone",
-      header: "Contact",
-      render: (lead) => (
-        <div className="text-sm">
-          {lead.phone && <div>{lead.phone}</div>}
-          {lead.country && <div className="text-gray-500">{lead.country}</div>}
-        </div>
-      ),
-    },
-    {
-      key: "source",
-      header: "Source",
-      render: (lead) => (
-        <Badge variant="default">{sourceOptions.find(s => s.value === lead.source)?.label || lead.source}</Badge>
-      ),
-    },
-    {
-      key: "status",
-      header: "Status",
-      render: (lead) => <StatusBadge status={lead.status} />,
-    },
-    {
-      key: "trialDate",
-      header: "Trial",
-      render: (lead) => (
-        lead.trialDate ? (
-          <div className="text-sm">
-            <div>{new Date(lead.trialDate).toLocaleDateString()}</div>
-            {lead.trialAttended === false && (
-              <span className="text-orange-500 text-xs">Pending</span>
-            )}
-          </div>
-        ) : (
-          <span className="text-gray-400 text-sm">Not scheduled</span>
-        )
-      ),
-    },
-    {
-      key: "assignedTo",
-      header: "Assigned",
-      render: (lead) => (
-        lead.assignedTo ? (
-          <span className="text-sm">{lead.assignedTo.name}</span>
-        ) : (
-          <span className="text-gray-400 text-sm">Unassigned</span>
-        )
-      ),
-    },
-    {
-      key: "createdAt",
-      header: "Added",
-      render: (lead) => (
-        <span className="text-sm text-gray-500">
-          {new Date(lead.createdAt).toLocaleDateString()}
-        </span>
-      ),
-    },
-  ];
-
-  const counts = {
-    all: leads.length,
-    NEW: leads.filter((l) => l.status === "NEW").length || 0,
-    CONTACTED: leads.filter((l) => l.status === "CONTACTED").length || 0,
-    TRIAL: leads.filter((l) => l.status === "TRIAL").length || 0,
-    CONVERTED: leads.filter((l) => l.status === "CONVERTED").length || 0,
-    LOST: leads.filter((l) => l.status === "LOST").length || 0,
-  };
-
-  return (
-    <div>
-      <PageHeader
-        title="Leads"
-        subtitle="Track and manage potential customers from inquiry to conversion"
-        actions={
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors"
-          >
-            <FaPlus />
-            Add Lead
-          </button>
-        }
-      />
-
-      {/* Tabs and Search */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <Tabs tabs={tabs.map(t => ({ ...t, count: counts[t.value as keyof typeof counts] || 0 }))} activeTab={activeTab} onChange={setActiveTab} />
-        
-        <form onSubmit={handleSearch} className="flex items-center gap-2">
-          <div className="relative">
-            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search leads..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm w-64 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-            />
-          </div>
-          <button
-            type="submit"
-            className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <FaFilter className="text-gray-500" />
-          </button>
-        </form>
-      </div>
-
-      {/* Leads Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        {leads.length === 0 && !loading ? (
-          <EmptyState
-            icon="📋"
-            title="No leads found"
-            description={activeTab === "all" ? "Start by adding your first lead" : `No leads in ${activeTab.toLowerCase()} status`}
-            action={{
-              label: "Add Lead",
-              onClick: () => setShowAddModal(true),
-            }}
-          />
-        ) : (
-          <DataTable
-            columns={columns}
-            data={leads}
-            loading={loading}
-            emptyMessage="No leads matching your criteria"
-          />
-        )}
-      </div>
-
-      {/* Add Lead Modal */}
-      <Modal
-        isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        title="Add New Lead"
-        subtitle="Enter the lead's information"
-        size="md"
-        footer={
-          <div className="flex gap-3 justify-end">
-            <button
-              onClick={() => setShowAddModal(false)}
-              className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={() => {
-                setShowAddModal(false);
-              }}
-              className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors"
-            >
-              Create Lead
-            </button>
-          </div>
-        }
-      >
-        <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); setShowAddModal(false); }}>
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              label="Name"
-              name="name"
-              type="text"
-              required
-              placeholder="John Doe"
-              value={formData.name}
-              onChange={handleFormChange}
-              onBlur={handleFormBlur}
-              error={errors.name}
-              touched={touched.name}
-            />
-            <FormField
-              label="Email"
-              name="email"
-              type="email"
-              required
-              placeholder="john@example.com"
-              value={formData.email}
-              onChange={handleFormChange}
-              onBlur={handleFormBlur}
-              error={errors.email}
-              touched={touched.email}
-            />
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              label="Phone"
-              name="phone"
-              type="tel"
-              placeholder="+1 234 567 8900"
-              value={formData.phone}
-              onChange={handleFormChange}
-              onBlur={handleFormBlur}
-              error={errors.phone}
-              touched={touched.phone}
-            />
-            <FormField
-              label="Country"
-              name="country"
-              type="text"
-              placeholder="United States"
-              value={formData.country}
-              onChange={handleFormChange}
-              onBlur={handleFormBlur}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <SelectField
-              label="Source"
-              name="source"
-              options={sourceOptions}
-              placeholder="Select source"
-              value={formData.source}
-              onChange={handleFormChange}
-              onBlur={handleFormBlur}
-            />
-            <SelectField
-              label="Status"
-              name="status"
-              options={statusOptions}
-              placeholder="Select status"
-              value={formData.status}
-              onChange={handleFormChange}
-              onBlur={handleFormBlur}
-            />
-          </div>
-
-          <FormField
-            label="Notes"
-            name="notes"
-            type="textarea"
-            placeholder="Any additional notes about this lead..."
-            value={formData.notes}
-            onChange={handleFormChange}
-            onBlur={handleFormBlur}
-          />
-        </form>
-      </Modal>
-    </div>
-  );
+export default function AdminLeadsPage() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <LeadsDashboard />
+        </Suspense>
+    );
 }

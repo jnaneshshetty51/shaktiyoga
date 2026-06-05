@@ -323,3 +323,83 @@ model RevenueRecord {
   
   @@index([createdAt])
 }
+
+enum ProgramLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  ALL_LEVELS
+}
+
+enum ProgramStatus {
+  ACTIVE
+  DRAFT
+  ARCHIVED
+}
+
+model Program {
+  id            String        @id @default(cuid())
+  title         String
+  description   String
+  duration      String        // e.g., "4 Weeks"
+  level         ProgramLevel  @default(ALL_LEVELS)
+  status        ProgramStatus @default(DRAFT)
+  price         Float         @default(0)
+  thumbnail     String?       // URL to image
+  enrolledCount Int           @default(0)
+  
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  
+  @@index([status])
+}
+
+model FAQ {
+  id        String   @id @default(cuid())
+  question  String
+  answer    String
+  category  String   @default("General") // General, Pricing, Classes, Technical
+  sortOrder Int      @default(0)
+  status    ContentStatus @default(DRAFT)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([status, category])
+}
+
+model Plan {
+  id          String   @id @default(cuid())
+  name        String
+  planType    PlanType // EVERYDAY_YOGA, YOGA_THERAPY, TRIAL
+  price       Float
+  currency    String   @default("INR")
+  period      String   // "month", "week", "once"
+  features    String[] // Array of feature strings
+  description String?
+  status      ContentStatus @default(DRAFT)
+  sortOrder   Int      @default(0)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([planType, status])
+}
+
+model SiteStats {
+  id        String @id @default(cuid())
+  statKey   String @unique // e.g., "totalStudents", "countriesCount"
+  statValue String
+  category  String @default("general") // general, social_proof, performance
+  updatedAt DateTime @updatedAt
+}
+
+model WhyUsBenefit {
+  id          String @id @default(cuid())
+  icon        String // Emoji or icon class
+  title       String
+  description String
+  sortOrder   Int    @default(0)
+  status      ContentStatus @default(DRAFT)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

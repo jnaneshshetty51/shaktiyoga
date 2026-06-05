@@ -1,17 +1,34 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
+import { useCurrency } from '@/context/CurrencyContext';
+
+interface PlanDetails {
+    name: string;
+    price: number;
+    period: string;
+    features: string[];
+}
 
 function CheckoutContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const { login, user, isLoading } = useAuth();
     const planType = searchParams.get("plan"); // 'everyday', 'therapy', 'trial'
+    const { formatPrice } = useCurrency();
 
     const [isProcessing, setIsProcessing] = useState(false);
+    const [plans, setPlans] = useState<Record<string, PlanDetails> | null>(null);
+
+    useEffect(() => {
+        fetch('/api/plans')
+            .then(res => res.json())
+            .then(data => setPlans(data))
+            .catch(err => console.error('Failed to fetch plans:', err));
+    }, []);
 
     if (!isLoading && !user) {
         return (
@@ -32,16 +49,17 @@ function CheckoutContent() {
         );
     }
 
-    const planDetails = {
+    // Fallback plan details if API fails
+    const fallbackPlanDetails = {
         everyday: {
             name: "Everyday Yoga",
-            price: 59,
+            price: 4900,
             period: "month",
             features: ["5 Live Classes/week", "Community Access", "Flexible Timings"]
         },
         therapy: {
             name: "Yoga Therapy",
-            price: 120,
+            price: 9900,
             period: "month",
             features: ["4 Personal Sessions", "Health Assessment", "Custom Plan"]
         },
@@ -53,29 +71,38 @@ function CheckoutContent() {
         }
     };
 
+    const planDetails = plans || fallbackPlanDetails;
     const selectedPlan = planDetails[planType as keyof typeof planDetails] || planDetails.everyday;
 
-    const handlePayment = (e: React.FormEvent) => {
+    const handlePayment = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsProcessing(true);
 
-        // Simulate payment processing
-        setTimeout(() => {
-            // Update mock auth state based on plan
-            // TODO: Implement actual subscription update via API
-            /*
-            if (planType === 'therapy') {
-                login('member_therapy');
-            } else if (planType === 'trial') {
-                login('trial');
-            } else {
-                login('member_everyday');
+        try {
+            const res = await fetch('/api/checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ planType }),
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+
+            // Re-login to update user role locally
+            if (data.subscription?.roleAssigned) {
+                // we mock the re-login with 'admin123' since it's a demo
+                let quickEmail = "member@shaktiyoga.com";
+                if (data.subscription.roleAssigned === 'member_therapy') quickEmail = "teacher@shaktiyoga.com";
+                await login(quickEmail, "admin123");
             }
-            */
-            console.log('Payment successful for plan:', planType);
 
             router.push("/welcome");
-        }, 2000);
+        } catch (error) {
+            console.error('Payment failed:', error);
+            alert('Payment failed. Please try again.');
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
     return (
@@ -90,7 +117,7 @@ function CheckoutContent() {
                             <h3 className="font-bold text-lg text-gray-800">{selectedPlan.name}</h3>
                             <p className="text-sm text-gray-500">Billed {selectedPlan.period === 'month' ? 'monthly' : 'once'}</p>
                         </div>
-                        <div className="text-2xl font-bold text-primary">${selectedPlan.price}</div>
+                        <div className="text-2xl font-bold text-primary">{selectedPlan.price > 0 ? formatPrice(selectedPlan.price) : 'Free'}</div>
                     </div>
 
                     <ul className="space-y-3 mb-6">
@@ -103,7 +130,7 @@ function CheckoutContent() {
 
                     <div className="flex justify-between items-center pt-4 border-t border-gray-100 font-bold text-lg">
                         <span>Total</span>
-                        <span>${selectedPlan.price}</span>
+                        <span>{selectedPlan.price > 0 ? formatPrice(selectedPlan.price) : 'Free'}</span>
                     </div>
                 </div>
 
@@ -150,7 +177,7 @@ function CheckoutContent() {
                             {isProcessing ? (
                                 <>Processing...</>
                             ) : (
-                                <>{selectedPlan.price === 0 ? "Start Free Trial" : `Pay $${selectedPlan.price}`}</>
+                                <>{selectedPlan.price === 0 ? "Start Free Trial" : `Pay ${formatPrice(selectedPlan.price)}`}</>
                             )}
                         </button>
 

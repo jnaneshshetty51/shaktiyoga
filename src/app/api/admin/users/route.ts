@@ -1,35 +1,110 @@
 import { NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/auth';
+import { verifyToken, hashPassword } from '@/lib/auth';
 import { cookies } from 'next/headers';
+import { prisma } from '@/lib/prisma';
 
-// Demo data for users
-const DEMO_USERS = [
-    { id: '1', name: 'Priya Sharma', email: 'priya@shaktiyoga.com', role: 'SUPER_ADMIN', status: 'Active', plan: 'Everyday Yoga', lastLogin: new Date().toISOString(), joinedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() },
-    { id: '2', name: 'Anita Desai', email: 'anita@shaktiyoga.com', role: 'TEACHER', status: 'Active', plan: 'Teacher', lastLogin: new Date().toISOString(), joinedAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString() },
-    { id: '3', name: 'Meera Patel', email: 'meera@gmail.com', role: 'MEMBER_EVERYDAY', status: 'Active', plan: 'Everyday Yoga', lastLogin: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), joinedAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString() },
-    { id: '4', name: 'Kavita Nair', email: 'kavita@gmail.com', role: 'MEMBER_THERAPY', status: 'Active', plan: 'Yoga Therapy', lastLogin: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), joinedAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString() },
-    { id: '5', name: 'Ravi Kumar', email: 'ravi@gmail.com', role: 'MEMBER_EVERYDAY', status: 'Trial', plan: 'Everyday Yoga', lastLogin: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), joinedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
-    { id: '6', name: 'Lakshmi Reddy', email: 'lakshmi@gmail.com', role: 'MEMBER_EVERYDAY', status: 'Active', plan: 'Everyday Yoga', lastLogin: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), joinedAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString() },
-    { id: '7', name: 'Suresh Iyer', email: 'suresh@gmail.com', role: 'VISITOR', status: 'Inactive', plan: 'None', lastLogin: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), joinedAt: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString() },
-    { id: '8', name: 'Deepa Menon', email: 'deepa@gmail.com', role: 'MEMBER_THERAPY', status: 'Active', plan: 'Yoga Therapy', lastLogin: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), joinedAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString() },
-];
+// Function to map DB role to frontend status
+function getStatusFromRole(role: string): string {
+    if (role === 'VISITOR') return 'Inactive';
+    if (role === 'TRIAL') return 'Trial';
+    return 'Active';
+}
 
 export async function GET() {
     try {
         const cookieStore = await cookies();
         const token = cookieStore.get('token')?.value;
 
-        if (token) {
-            const payload = await verifyToken(token);
-            if (!payload || (payload.role !== 'admin' && payload.role !== 'SUPER_ADMIN')) {
-                // Ignore for now and return demo users to avoid breaking the dashboard
-            }
+        if (!token) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        // Always return demo users for now to fix dashboard
-        return NextResponse.json({ users: DEMO_USERS });
+        const payload = await verifyToken(token);
+        if (!payload || (payload.role !== 'admin' && payload.role !== 'SUPER_ADMIN')) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
+        // Fetch users from DB
+        const dbUsers = await prisma.user.findMany({
+            orderBy: { createdAt: 'desc' }
+        });
+
+        // Map to expected frontend format
+        const users = dbUsers.map(user => ({
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            status: getStatusFromRole(user.role),
+            plan: user.role.replace('MEMBER_', '').replace('_', ' '), // Fallback plan display
+            lastLogin: user.lastLogin ? user.lastLogin.toISOString() : 'Never',
+            joinedAt: user.createdAt.toISOString()
+        }));
+
+        return NextResponse.json({ users });
     } catch (error) {
         console.error('Admin users API error:', error);
-        return NextResponse.json({ users: DEMO_USERS });
+        return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 });
+    }
+}
+
+export async function POST(request: Request) {
+    try {
+        const cookieStore = await cookies();
+        const token = cookieStore.get('token')?.value;
+
+        if (!token) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const payload = await verifyToken(token);
+        if (!payload || (payload.role !== 'admin' && payload.role !== 'SUPER_ADMIN')) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
+        const body = await request.json();
+        const { name, email, role } = body;
+
+        if (!name || !email || !role) {
+            return NextResponse.json({ error: 'Name, email, and role are required' }, { status: 400 });
+        }
+
+        // Check if user already exists
+        const existing = await prisma.user.findUnique({ where: { email } });
+        if (existing) {
+            return NextResponse.json({ error: 'User with this email already exists' }, { status: 409 });
+        }
+
+        // Generate a secure default password for admin-created users
+        const defaultPassword = 'TempPassword123!';
+        const passwordHash = await hashPassword(defaultPassword);
+
+        // Create the user
+        const newUser = await prisma.user.create({
+            data: {
+                name,
+                email,
+                role,
+                passwordHash,
+                timezone: 'IST'
+            }
+        });
+
+        return NextResponse.json({
+            success: true,
+            message: 'User created successfully',
+            user: {
+                id: newUser.id,
+                name: newUser.name,
+                email: newUser.email,
+                role: newUser.role,
+                status: getStatusFromRole(newUser.role),
+                joinedAt: newUser.createdAt.toISOString()
+            }
+        });
+
+    } catch (error) {
+        console.error('Failed to create user:', error);
+        return NextResponse.json({ error: 'Failed to create user' }, { status: 500 });
     }
 }

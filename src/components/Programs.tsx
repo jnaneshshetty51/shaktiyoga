@@ -1,6 +1,11 @@
+"use client";
+
 import Link from 'next/link';
+import { useCurrency } from '@/context/CurrencyContext';
 
 export default function Programs() {
+    const { formatPrice } = useCurrency();
+
     return (
         <section id="programs" className="py-20 px-8 bg-accent/30">
             <div className="max-w-6xl mx-auto">
@@ -16,7 +21,7 @@ export default function Programs() {
                         <p className="font-sans text-sm text-text/60 uppercase tracking-widest mb-6">Group Classes</p>
 
                         <div className="text-4xl font-serif text-primary mb-6">
-                            $59<span className="text-lg text-text/50 font-sans">/month</span>
+                            {formatPrice(4900)}<span className="text-lg text-text/50 font-sans">/month</span>
                         </div>
 
                         <ul className="space-y-4 mb-8 font-sans text-text/80">
@@ -46,7 +51,7 @@ export default function Programs() {
                         <p className="font-sans text-sm text-text/60 uppercase tracking-widest mb-6">1:1 Personalized</p>
 
                         <div className="text-4xl font-serif text-primary mb-6">
-                            $120<span className="text-lg text-text/50 font-sans">/month</span>
+                            {formatPrice(9900)}<span className="text-lg text-text/50 font-sans">/month</span>
                         </div>
 
                         <ul className="space-y-4 mb-8 font-sans text-text/80">

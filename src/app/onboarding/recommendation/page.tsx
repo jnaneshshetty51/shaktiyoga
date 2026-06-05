@@ -3,11 +3,13 @@
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Suspense } from "react";
+import { useCurrency } from '@/context/CurrencyContext';
 
 function RecommendationContent() {
     const searchParams = useSearchParams();
     const plan = searchParams.get("plan");
     const isTherapy = plan === "therapy";
+    const { formatPrice } = useCurrency();
 
     return (
         <main className="min-h-screen flex items-center justify-center bg-background py-20 px-4">
@@ -30,7 +32,7 @@ function RecommendationContent() {
                     </p>
 
                     <div className="text-5xl font-serif text-primary mb-6">
-                        {isTherapy ? "$120" : "$59"}<span className="text-lg text-text/50 font-sans">/month</span>
+                        {isTherapy ? formatPrice(9900) : formatPrice(4900)}<span className="text-lg text-text/50 font-sans">/month</span>
                     </div>
 
                     <p className="font-sans text-text/80 mb-8 leading-relaxed">

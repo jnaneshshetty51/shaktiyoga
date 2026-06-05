@@ -23,9 +23,9 @@ export async function GET() {
             }
         }
 
-        return NextResponse.json(DEMO_GROUPS);
+        return NextResponse.json({ groups: DEMO_GROUPS });
     } catch (error) {
         console.error('Admin community API error:', error);
-        return NextResponse.json(DEMO_GROUPS);
+        return NextResponse.json({ groups: DEMO_GROUPS });
     }
 }

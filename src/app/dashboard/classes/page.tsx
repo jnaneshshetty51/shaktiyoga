@@ -129,7 +129,7 @@ export default function ClassesPage() {
                                 You've used your free trial class. Ready to continue your yoga journey?
                             </p>
                             <a
-                                href="/pricing"
+                                href="/checkout?plan=everyday"
                                 className="inline-block px-6 py-3 bg-secondary text-white font-bold uppercase tracking-widest rounded hover:bg-primary transition-colors"
                             >
                                 View Membership Plans

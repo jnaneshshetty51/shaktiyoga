@@ -4,10 +4,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { PageHeader, StatCard, SectionCard } from "@/components/admin";
 import { DataTable, Column, StatusBadge, Badge } from "@/components/admin";
-import { 
-  FaUsers, 
-  FaDollarSign, 
-  FaCalendarCheck, 
+import {
+  FaUsers,
+  FaDollarSign,
+  FaCalendarCheck,
   FaUserPlus,
   FaArrowRight,
   FaClock,
@@ -48,6 +48,35 @@ interface TopMember {
   lastActive: string;
 }
 
+interface DashboardData {
+  recentActivity: RecentActivity[];
+  upcomingBookings: UpcomingBooking[];
+  topMembers: TopMember[];
+}
+
+// Fallback data for when API fails
+const FALLBACK_RECENT_ACTIVITY: RecentActivity[] = [
+  { id: "1", type: "signup", message: "Sarah Johnson started a free trial", timestamp: "2 hours ago" },
+  { id: "2", type: "payment", message: "Payment of ₹7,200 received from Mike Ross", timestamp: "4 hours ago" },
+  { id: "3", type: "booking", message: "John Doe booked a therapy session for tomorrow", timestamp: "5 hours ago" },
+  { id: "4", type: "trial", message: "Emma Wilson completed 3 trial classes", timestamp: "1 day ago" },
+  { id: "5", type: "booking", message: "Robert Chen booked consultation call", timestamp: "1 day ago" },
+];
+
+const FALLBACK_UPCOMING_BOOKINGS: UpcomingBooking[] = [
+  { id: "1", memberName: "Priya Sharma", type: "Therapy Session", date: "Today", time: "10:00 AM IST" },
+  { id: "2", memberName: "Anita Patel", type: "Consultation", date: "Today", time: "11:30 AM IST" },
+  { id: "3", memberName: "John Doe", type: "Therapy Session", date: "Tomorrow", time: "09:00 AM IST" },
+  { id: "4", memberName: "Sarah Wilson", type: "Therapy Session", date: "Tomorrow", time: "02:00 PM IST" },
+];
+
+const FALLBACK_TOP_MEMBERS: TopMember[] = [
+  { id: "1", name: "Priya Sharma", email: "priya@email.com", plan: "Yoga Therapy", lastActive: "Today" },
+  { id: "2", name: "Mike Ross", email: "mike@email.com", plan: "Everyday Yoga", lastActive: "Today" },
+  { id: "3", name: "Emma Wilson", email: "emma@email.com", plan: "Everyday Yoga", lastActive: "Yesterday" },
+  { id: "4", name: "Robert Chen", email: "robert@email.com", plan: "Yoga Therapy", lastActive: "2 days ago" },
+];
+
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<DashboardStats>({
     activeMembers: 0,
@@ -56,6 +85,11 @@ export default function AdminDashboardPage() {
     pendingBookings: 0,
     mrrChange: 0,
     membersChange: 0,
+  });
+  const [dashboardData, setDashboardData] = useState<DashboardData>({
+    recentActivity: FALLBACK_RECENT_ACTIVITY,
+    upcomingBookings: FALLBACK_UPCOMING_BOOKINGS,
+    topMembers: FALLBACK_TOP_MEMBERS
   });
   const [loading, setLoading] = useState(true);
 
@@ -66,42 +100,27 @@ export default function AdminDashboardPage() {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/admin/stats");
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data);
+      // Fetch stats and dashboard data in parallel
+      const [statsResponse, dashboardResponse] = await Promise.all([
+        fetch("/api/admin/stats"),
+        fetch("/api/admin/dashboard")
+      ]);
+
+      if (statsResponse.ok) {
+        const statsData = await statsResponse.json();
+        setStats(statsData);
+      }
+
+      if (dashboardResponse.ok) {
+        const dashData = await dashboardResponse.json();
+        setDashboardData(dashData);
       }
     } catch (error) {
-      console.error("Failed to fetch stats:", error);
+      console.error("Failed to fetch dashboard data:", error);
     } finally {
       setLoading(false);
     }
   };
-
-  // Mock recent activity data
-  const recentActivity: RecentActivity[] = [
-    { id: "1", type: "signup", message: "Sarah Johnson started a free trial", timestamp: "2 hours ago" },
-    { id: "2", type: "payment", message: "Payment of ₹7,200 received from Mike Ross", timestamp: "4 hours ago" },
-    { id: "3", type: "booking", message: "John Doe booked a therapy session for tomorrow", timestamp: "5 hours ago" },
-    { id: "4", type: "trial", message: "Emma Wilson completed 3 trial classes", timestamp: "1 day ago" },
-    { id: "5", type: "booking", message: "Robert Chen booked consultation call", timestamp: "1 day ago" },
-  ];
-
-  // Mock upcoming bookings
-  const upcomingBookings: UpcomingBooking[] = [
-    { id: "1", memberName: "Priya Sharma", type: "Therapy Session", date: "Today", time: "10:00 AM IST" },
-    { id: "2", memberName: "Anita Patel", type: "Consultation", date: "Today", time: "11:30 AM IST" },
-    { id: "3", memberName: "John Doe", type: "Therapy Session", date: "Tomorrow", time: "09:00 AM IST" },
-    { id: "4", memberName: "Sarah Wilson", type: "Therapy Session", date: "Tomorrow", time: "02:00 PM IST" },
-  ];
-
-  // Mock top members
-  const topMembers: TopMember[] = [
-    { id: "1", name: "Priya Sharma", email: "priya@email.com", plan: "Yoga Therapy", lastActive: "Today" },
-    { id: "2", name: "Mike Ross", email: "mike@email.com", plan: "Everyday Yoga", lastActive: "Today" },
-    { id: "3", name: "Emma Wilson", email: "emma@email.com", plan: "Everyday Yoga", lastActive: "Yesterday" },
-    { id: "4", name: "Robert Chen", email: "robert@email.com", plan: "Yoga Therapy", lastActive: "2 days ago" },
-  ];
 
   const activityIcons: Record<string, React.ReactNode> = {
     signup: <FaUserPlus className="text-green-500" />,
@@ -171,7 +190,7 @@ export default function AdminDashboardPage() {
           title="Trial Users"
           value={loading ? "—" : stats.trialUsers}
           change="12 expiring soon"
-          changeType="warning"
+          changeType="neutral"
           icon={<FaClock className="w-5 h-5" />}
         />
         <StatCard
@@ -219,7 +238,7 @@ export default function AdminDashboardPage() {
             </Link>
           </div>
           <div className="divide-y divide-gray-100">
-            {recentActivity.map((activity) => (
+            {dashboardData.recentActivity.map((activity) => (
               <div key={activity.id} className="px-6 py-4 flex items-start gap-4 hover:bg-gray-50 transition-colors">
                 <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
                   {activityIcons[activity.type]}
@@ -248,7 +267,7 @@ export default function AdminDashboardPage() {
             </Link>
           </div>
           <div className="divide-y divide-gray-100">
-            {upcomingBookings.map((booking) => (
+            {dashboardData.upcomingBookings.map((booking) => (
               <div key={booking.id} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
@@ -281,7 +300,7 @@ export default function AdminDashboardPage() {
           </div>
           <DataTable
             columns={memberColumns}
-            data={topMembers}
+            data={dashboardData.topMembers}
             emptyMessage="No active members yet"
           />
         </div>

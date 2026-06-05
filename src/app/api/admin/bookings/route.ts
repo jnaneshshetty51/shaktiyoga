@@ -1,32 +1,91 @@
 import { NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
-
-// Demo data for bookings
-const DEMO_BOOKINGS = [
-    { id: '1', userId: '3', user: { id: '3', name: 'Meera Patel', email: 'meera@gmail.com' }, type: 'THERAPY_SESSION', status: 'CONFIRMED', date: new Date(Date.now() + 86400000).toISOString(), time: '09:00 AM', teacher: { id: '2', name: 'Anita Desai' }, notes: 'Focus on back pain relief', createdAt: new Date().toISOString() },
-    { id: '2', userId: '4', user: { id: '4', name: 'Kavita Nair', email: 'kavita@gmail.com' }, type: 'CONSULTATION', status: 'PENDING', date: new Date(Date.now() + 86400000 * 2).toISOString(), time: '11:00 AM', teacher: { id: '1', name: 'Priya Sharma' }, notes: 'Initial consultation', createdAt: new Date(Date.now() - 86400000).toISOString() },
-    { id: '3', userId: '5', user: { id: '5', name: 'Ravi Kumar', email: 'ravi@gmail.com' }, type: 'SPECIAL_SESSION', status: 'CONFIRMED', date: new Date(Date.now() + 86400000 * 3).toISOString(), time: '04:00 PM', teacher: { id: '2', name: 'Anita Desai' }, notes: 'Trial session', createdAt: new Date(Date.now() - 86400000 * 2).toISOString() },
-    { id: '4', userId: '6', user: { id: '6', name: 'Lakshmi Reddy', email: 'lakshmi@gmail.com' }, type: 'THERAPY_SESSION', status: 'COMPLETED', date: new Date(Date.now() - 86400000).toISOString(), time: '10:00 AM', teacher: { id: '1', name: 'Priya Sharma' }, notes: 'Regular therapy session', createdAt: new Date(Date.now() - 86400000 * 5).toISOString() },
-    { id: '5', userId: '8', user: { id: '8', name: 'Deepa Menon', email: 'deepa@gmail.com' }, type: 'CONSULTATION', status: 'CONFIRMED', date: new Date(Date.now() + 86400000 * 4).toISOString(), time: '02:00 PM', teacher: { id: '1', name: 'Priya Sharma' }, notes: 'Follow-up consultation', createdAt: new Date(Date.now() - 86400000 * 3).toISOString() },
-    { id: '6', userId: '7', user: { id: '7', name: 'Suresh Iyer', email: 'suresh@gmail.com' }, type: 'THERAPY_SESSION', status: 'CANCELLED', date: new Date(Date.now() - 86400000 * 2).toISOString(), time: '09:00 AM', teacher: { id: '2', name: 'Anita Desai' }, notes: 'Session cancelled by user', createdAt: new Date(Date.now() - 86400000 * 7).toISOString() },
-];
+import { prisma } from '@/lib/prisma';
 
 export async function GET() {
     try {
         const cookieStore = await cookies();
         const token = cookieStore.get('token')?.value;
 
-        if (token) {
-            const payload = await verifyToken(token);
-            if (!payload || (payload.role !== 'admin' && payload.role !== 'SUPER_ADMIN')) {
-                // Ignore for now and return demo data
-            }
+        if (!token) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        return NextResponse.json({ bookings: DEMO_BOOKINGS });
+        const payload = await verifyToken(token);
+        if (!payload || (payload.role !== 'admin' && payload.role !== 'SUPER_ADMIN')) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
+        const dbBookings = await prisma.booking.findMany({
+            include: {
+                user: { select: { name: true } },
+                teacher: { select: { name: true } }
+            },
+            orderBy: { date: 'desc' }
+        });
+
+        const bookings = dbBookings.map(b => ({
+            id: b.id,
+            userId: b.userId,
+            userName: b.user?.name || 'Unknown User',
+            type: b.type === 'THERAPY_SESSION' ? 'Therapy' : b.type === 'CONSULTATION' ? 'Consultation' : 'Special Session',
+            status: b.status === 'CONFIRMED' ? 'Confirmed' : b.status === 'CANCELLED' ? 'Cancelled' : b.status === 'COMPLETED' ? 'Completed' : 'Pending',
+            date: b.date.toISOString().split('T')[0],
+            time: b.date.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' }) + ' IST',
+            teacher: b.teacher?.name || 'Unassigned'
+        }));
+
+        return NextResponse.json({ bookings });
     } catch (error) {
         console.error('Admin bookings API error:', error);
-        return NextResponse.json({ bookings: DEMO_BOOKINGS });
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+}
+
+export async function POST(request: Request) {
+    try {
+        const cookieStore = await cookies();
+        const token = cookieStore.get('token')?.value;
+
+        if (!token) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const payload = await verifyToken(token);
+        if (!payload || (payload.role !== 'admin' && payload.role !== 'SUPER_ADMIN')) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
+        const body = await request.json();
+        const { userId, type, date, time, teacherId } = body;
+        
+        if (!userId || !type || !date || !time) {
+            return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+        }
+
+        // Parse date and time to create a single Date object
+        const bookingDate = new Date(`${date}T${time}:00`);
+
+        const teacher = teacherId ? teacherId : (await prisma.user.findFirst({ where: { role: 'TEACHER' } }))?.id;
+
+        if (!teacher) {
+            return NextResponse.json({ error: 'No teacher found. Please create a teacher user first.' }, { status: 400 });
+        }
+
+        const booking = await prisma.booking.create({
+            data: {
+                userId,
+                teacherId: teacher,
+                type: type === 'Therapy' ? 'THERAPY_SESSION' : 'CONSULTATION',
+                status: 'CONFIRMED',
+                date: bookingDate,
+            }
+        });
+
+        return NextResponse.json({ success: true, booking });
+    } catch (error) {
+        console.error('Failed to create booking:', error);
+        return NextResponse.json({ error: 'Failed to create booking' }, { status: 500 });
     }
 }

@@ -2,16 +2,61 @@
 
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
-import { initialGroups } from "@/utils/community";
+import { useEffect, useState } from "react";
+
+interface CommunityGroup {
+    id: string;
+    name: string;
+    role: string;
+    whatsappLink: string;
+    pinnedMessage: string;
+}
+
+// Fallback groups for when API fails
+const FALLBACK_GROUPS: CommunityGroup[] = [
+    {
+        id: 'everyday',
+        name: 'Everyday Yoga Batch A',
+        role: 'member_everyday',
+        whatsappLink: 'https://chat.whatsapp.com/mock-everyday-link',
+        pinnedMessage: "Welcome! Tomorrow's class focuses on hip openers. Bring a strap!"
+    },
+    {
+        id: 'therapy',
+        name: 'Therapy Circle',
+        role: 'member_therapy',
+        whatsappLink: 'https://chat.whatsapp.com/mock-therapy-link',
+        pinnedMessage: 'Reminder: Dr. Rao is available for Q&A this Saturday at 5 PM IST.'
+    },
+    {
+        id: 'trial',
+        name: 'New Joiners & Trial',
+        role: 'trial',
+        whatsappLink: 'https://chat.whatsapp.com/mock-trial-link',
+        pinnedMessage: "Hope you enjoyed your first class! Feel free to ask any questions here."
+    }
+];
 
 export default function DashboardPage() {
     const { user, isLoading } = useAuth();
+    const [groups, setGroups] = useState<CommunityGroup[]>(FALLBACK_GROUPS);
+
+    useEffect(() => {
+        fetch('/api/community/groups')
+            .then(res => res.json())
+            .then(data => setGroups(data))
+            .catch(err => console.error('Failed to fetch community groups:', err));
+    }, []);
 
     if (isLoading) return <div className="p-20 text-center">Loading dashboard...</div>;
     if (!user) return <div className="p-20 text-center">Please log in.</div>;
 
-    // Find community group based on role
-    const communityGroup = initialGroups.find(g => g.role === user.role);
+    // Find community group based on role - handle both lowercase and uppercase role formats
+    const userRole = user.role?.toUpperCase() || user.role;
+    const communityGroup = groups.find(g => {
+        const groupRole = g.role?.toUpperCase() || g.role;
+        return groupRole === userRole || groupRole === userRole.replace('MEMBER_', '');
+    });
 
     return (
         <div>
@@ -58,7 +103,7 @@ export default function DashboardPage() {
             <div className="grid md:grid-cols-3 gap-6">
                 {/* Quick Actions & Widgets */}
                 <div className="md:col-span-2 grid gap-6">
-                    {/* Next Class Widget */}
+                    {/* Next Class Widget - Would normally fetch from API */}
                     <div className="bg-white p-6 rounded-lg shadow-sm border border-primary/10 relative overflow-hidden">
                         <div className="absolute top-0 right-0 bg-secondary text-white text-[10px] font-bold px-3 py-1 rounded-bl uppercase tracking-widest">
                             Live in 15 mins

@@ -23,10 +23,16 @@ interface AnalyticsData {
   topPerformingContent: { title: string; views: number }[];
 }
 
+interface ApiError {
+  error: string;
+  details?: string;
+}
+
 export default function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState("30d");
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAnalytics();
@@ -34,60 +40,24 @@ export default function AnalyticsPage() {
 
   const fetchAnalytics = async () => {
     setLoading(true);
+    setError(null);
     try {
       const response = await fetch(`/api/admin/analytics?range=${dateRange}`);
       if (response.ok) {
         const result = await response.json();
         setData(result);
       } else {
-        setData(getMockData());
+        const errorData: ApiError = await response.json();
+        setError(errorData.error || 'Failed to fetch analytics');
+        setData(null);
       }
-    } catch {
-      setData(getMockData());
+    } catch (err) {
+      setError('Network error - unable to connect to analytics API');
+      setData(null);
     } finally {
       setLoading(false);
     }
   };
-
-  // Mock data for demonstration
-  const getMockData = (): AnalyticsData => ({
-    totalMembers: 247,
-    activeMembers: 198,
-    trialUsers: 49,
-    mrr: 12840,
-    mrrGrowth: 12.5,
-    newMembersThisMonth: 23,
-    newMembersGrowth: 8.3,
-    classAttendanceRate: 78,
-    attendanceChange: -2.1,
-    conversionRate: 24.5,
-    conversionChange: 3.2,
-    revenueByMonth: [
-      { month: "Jan", revenue: 9800 },
-      { month: "Feb", revenue: 10400 },
-      { month: "Mar", revenue: 11200 },
-      { month: "Apr", revenue: 10800 },
-      { month: "May", revenue: 11900 },
-      { month: "Jun", revenue: 12840 },
-    ],
-    membersByPlan: [
-      { plan: "Everyday Yoga", count: 142 },
-      { plan: "Yoga Therapy", count: 56 },
-    ],
-    membersByCountry: [
-      { country: "USA", count: 89 },
-      { country: "India", count: 67 },
-      { country: "UK", count: 34 },
-      { country: "UAE", count: 28 },
-      { country: "Australia", count: 19 },
-      { country: "Others", count: 10 },
-    ],
-    topPerformingContent: [
-      { title: "5 Yoga Poses for Stress Relief", views: 1240 },
-      { title: "Morning Yoga Routine for Beginners", views: 980 },
-      { title: "Understanding Yoga Therapy", views: 756 },
-    ],
-  });
 
   const maxRevenue = data?.revenueByMonth?.reduce((max, item) => Math.max(max, item.revenue), 0) || 1;
 
@@ -110,20 +80,34 @@ export default function AnalyticsPage() {
         }
       />
 
+      {/* Error Display */}
+      {error && (
+        <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-red-800 font-medium">Error loading analytics</p>
+          <p className="text-red-600 text-sm">{error}</p>
+          <button
+            onClick={fetchAnalytics}
+            className="mt-2 px-4 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatCard
           title="Monthly Revenue"
-          value={`$${data?.mrr.toLocaleString() || 0}`}
-          change={`${data?.mrrGrowth >= 0 ? '+' : ''}${data?.mrrGrowth}%`}
-          changeType={data?.mrrGrowth >= 0 ? "positive" : "negative"}
-          trend={data?.mrrGrowth >= 0 ? "up" : "down"}
+          value={`$${data?.mrr?.toLocaleString() || 0}`}
+          change={`${(data?.mrrGrowth ?? 0) >= 0 ? '+' : ''}${data?.mrrGrowth ?? 0}%`}
+          changeType={(data?.mrrGrowth ?? 0) >= 0 ? "positive" : "negative"}
+          trend={(data?.mrrGrowth ?? 0) >= 0 ? "up" : "down"}
           icon={<FaDollarSign className="w-5 h-5" />}
         />
         <StatCard
           title="Active Members"
           value={data?.activeMembers || 0}
-          change="+23 this month"
+          change={`+${data?.newMembersThisMonth || 0} this month`}
           changeType="positive"
           trend="up"
           icon={<FaUsers className="w-5 h-5" />}
@@ -131,16 +115,16 @@ export default function AnalyticsPage() {
         <StatCard
           title="Trial Users"
           value={data?.trialUsers || 0}
-          change="24 expiring soon"
-          changeType="warning"
+          change={`${data?.trialUsers || 0} in trial period`}
+          changeType="neutral"
           icon={<FaUserPlus className="w-5 h-5" />}
         />
         <StatCard
           title="Class Attendance"
           value={`${data?.classAttendanceRate || 0}%`}
-          change={`${data?.attendanceChange}%`}
-          changeType={data?.attendanceChange >= 0 ? "positive" : "negative"}
-          trend={data?.attendanceChange >= 0 ? "up" : "down"}
+          change={`${data?.attendanceChange ?? 0}%`}
+          changeType={(data?.attendanceChange ?? 0) >= 0 ? "positive" : "negative"}
+          trend={(data?.attendanceChange ?? 0) >= 0 ? "up" : "down"}
           icon={<FaCalendarCheck className="w-5 h-5" />}
         />
       </div>
@@ -155,22 +139,32 @@ export default function AnalyticsPage() {
           <div className="p-6">
             {loading ? (
               <div className="animate-pulse h-48 bg-gray-100 rounded" />
+            ) : error || !data ? (
+              <div className="h-48 flex items-center justify-center text-gray-400">
+                {error ? 'Unable to load revenue data' : 'No data available'}
+              </div>
             ) : (
               <div className="flex items-end justify-between gap-2 h-48">
-                {data?.revenueByMonth.map((item, index) => (
-                  <div key={index} className="flex-1 flex flex-col items-center gap-2">
-                    <div className="w-full bg-primary/10 rounded-t-lg relative group">
-                      <div
-                        className="absolute inset-0 bg-gradient-to-t from-primary/30 to-primary/10 rounded-t-lg transition-all group-hover:from-primary/40 group-hover:to-primary/20"
-                        style={{ height: `${(item.revenue / maxRevenue) * 100}%` }}
-                      />
-                      <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                        ${item.revenue.toLocaleString()}
+                {data.revenueByMonth && data.revenueByMonth.length > 0 ? (
+                  data.revenueByMonth.map((item, index) => (
+                    <div key={index} className="flex-1 flex flex-col items-center gap-2">
+                      <div className="w-full bg-primary/10 rounded-t-lg relative group">
+                        <div
+                          className="absolute inset-0 bg-gradient-to-t from-primary/30 to-primary/10 rounded-t-lg transition-all group-hover:from-primary/40 group-hover:to-primary/20"
+                          style={{ height: `${(item.revenue / maxRevenue) * 100}%` }}
+                        />
+                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                          ${item.revenue.toLocaleString()}
+                        </div>
                       </div>
+                      <span className="text-xs text-gray-500">{item.month}</span>
                     </div>
-                    <span className="text-xs text-gray-500">{item.month}</span>
+                  ))
+                ) : (
+                  <div className="w-full flex items-center justify-center text-gray-400 h-48">
+                    No revenue data yet
                   </div>
-                ))}
+                )}
               </div>
             )}
           </div>
@@ -188,10 +182,14 @@ export default function AnalyticsPage() {
                 <div className="h-12 bg-gray-100 rounded" />
                 <div className="h-12 bg-gray-100 rounded" />
               </div>
+            ) : error || !data ? (
+              <div className="text-gray-400 text-center py-8">
+                {error ? 'Unable to load data' : 'No data available'}
+              </div>
             ) : (
               <div className="space-y-4">
-                {data?.membersByPlan.map((item, index) => {
-                  const percentage = ((item.count / (data?.activeMembers || 1)) * 100).toFixed(1);
+                {data.membersByPlan && data.membersByPlan.length > 0 ? data.membersByPlan.map((item, index) => {
+                  const percentage = ((item.count / (data.activeMembers || 1)) * 100).toFixed(1);
                   const colors = ["bg-primary", "bg-secondary", "bg-orange-500", "bg-teal-500"];
                   return (
                     <div key={index}>
@@ -207,7 +205,9 @@ export default function AnalyticsPage() {
                       </div>
                     </div>
                   );
-                })}
+                }) : (
+                  <div className="text-gray-400 text-center py-4">No plan data yet</div>
+                )}
               </div>
             )}
           </div>
@@ -228,8 +228,12 @@ export default function AnalyticsPage() {
                 <div className="h-12 bg-gray-100 rounded" />
                 <div className="h-12 bg-gray-100 rounded" />
               </div>
-            ) : (
-              data?.topPerformingContent.map((content, index) => (
+            ) : error || !data ? (
+              <div className="p-6 text-center text-gray-400">
+                {error ? 'Unable to load content data' : 'No data available'}
+              </div>
+            ) : data.topPerformingContent && data.topPerformingContent.length > 0 ? (
+              data.topPerformingContent.map((content, index) => (
                 <div key={index} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
                   <div className="flex items-center gap-4">
                     <span className="text-2xl font-bold text-gray-300">{(index + 1).toString().padStart(2, '0')}</span>
@@ -241,6 +245,8 @@ export default function AnalyticsPage() {
                   </div>
                 </div>
               ))
+            ) : (
+              <div className="p-6 text-center text-gray-400">No content data yet</div>
             )}
           </div>
         </div>
@@ -260,10 +266,14 @@ export default function AnalyticsPage() {
                 <div className="h-6 bg-gray-100 rounded" />
                 <div className="h-6 bg-gray-100 rounded" />
               </div>
-            ) : (
+            ) : error || !data ? (
+              <div className="text-center text-gray-400 py-8">
+                {error ? 'Unable to load location data' : 'No data available'}
+              </div>
+            ) : data.membersByCountry && data.membersByCountry.length > 0 ? (
               <div className="space-y-3">
-                {data?.membersByCountry.map((item, index) => {
-                  const maxCount = data?.membersByCountry[0]?.count || 1;
+                {data.membersByCountry.map((item, index) => {
+                  const maxCount = data.membersByCountry[0]?.count || 1;
                   return (
                     <div key={index} className="flex items-center gap-4">
                       <span className="text-sm font-medium text-gray-700 w-20">{item.country}</span>
@@ -278,6 +288,8 @@ export default function AnalyticsPage() {
                   );
                 })}
               </div>
+            ) : (
+              <div className="text-center text-gray-400 py-4">No location data yet</div>
             )}
           </div>
         </div>

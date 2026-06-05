@@ -1,8 +1,11 @@
 "use client";
 
+import { useCurrency } from '@/context/CurrencyContext';
+
 export default function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
     // In client component, use React.use() for params
     const id = "1"; // Default for demo
+    const { formatPrice } = useCurrency();
     
     return (
         <div className="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow-sm border border-primary/10">
@@ -40,13 +43,13 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
                 <tbody className="divide-y divide-gray-100">
                     <tr>
                         <td className="py-4">Everyday Yoga Plan - Monthly Subscription</td>
-                        <td className="py-4 text-right font-medium">$59.00</td>
+                        <td className="py-4 text-right font-medium">{formatPrice(4900, true)}</td>
                     </tr>
                 </tbody>
                 <tfoot className="border-t-2 border-gray-200">
                     <tr>
                         <td className="py-4 font-bold">Total</td>
-                        <td className="py-4 text-right font-bold text-lg">$59.00</td>
+                        <td className="py-4 text-right font-bold text-lg">{formatPrice(4900, true)}</td>
                     </tr>
                 </tfoot>
             </table>

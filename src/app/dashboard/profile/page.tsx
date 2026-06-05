@@ -1,21 +1,57 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { uploadFile } from '@/lib/storage';
 
 export default function ProfilePage() {
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
     const [formData, setFormData] = useState({
-        firstName: "Jnanesh",
-        lastName: "Shetty",
-        email: "jnanesh@example.com",
-        phone: "+91 98765 43210",
-        location: "Bangalore, India",
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        location: "",
         timezone: "IST",
-        goal: "Stress Relief",
-        conditions: "Mild lower back pain occasionally.",
+        goal: "",
+        conditions: "",
         emailPref: true,
         whatsappPref: true,
         phonePref: false,
     });
+
+    useEffect(() => {
+        fetchProfile();
+    }, []);
+
+    const fetchProfile = async () => {
+        try {
+            const res = await fetch('/api/profile');
+            if (res.ok) {
+                const data = await res.json();
+                if (data.user) {
+                    const nameParts = data.user.name?.split(' ') || [];
+                    setFormData({
+                        firstName: nameParts[0] || '',
+                        lastName: nameParts.slice(1).join(' ') || '',
+                        email: data.user.email || '',
+                        phone: data.user.phone || '',
+                        location: data.user.country || '',
+                        timezone: data.user.timezone || 'IST',
+                        goal: data.user.goals || '',
+                        conditions: data.user.medicalHistory || '',
+                        emailPref: data.user.communicationPref?.includes('Email') || true,
+                        whatsappPref: data.user.communicationPref?.includes('WhatsApp') || true,
+                        phonePref: data.user.communicationPref?.includes('Phone') || false,
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('Failed to fetch profile:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleEditPhoto = () => {
         const input = document.createElement('input');
@@ -24,8 +60,29 @@ export default function ProfilePage() {
         input.onchange = async (e) => {
             const file = (e.target as HTMLInputElement).files?.[0];
             if (file) {
-                // TODO: Upload to server
-                alert(`Photo selected: ${file.name}\nUpload functionality coming soon!`);
+                try {
+                    // Generate unique path for the file
+                    const timestamp = Date.now();
+                    const fileExt = file.name.split('.').pop();
+                    const path = `profile-photos/user_${timestamp}.${fileExt}`;
+
+                    // Upload to storage
+                    const photoUrl = await uploadFile(file, path);
+
+                    // Update user profile with new photo URL
+                    await fetch('/api/profile', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ profilePhoto: photoUrl }),
+                    });
+
+                    alert('Photo uploaded successfully!');
+                    // Optionally refresh profile data
+                    fetchProfile();
+                } catch (error) {
+                    console.error('Failed to upload photo:', error);
+                    alert('Failed to upload photo. Please try again.');
+                }
             }
         };
         input.click();
@@ -33,13 +90,38 @@ export default function ProfilePage() {
 
     const handleSaveChanges = async (e: React.FormEvent) => {
         e.preventDefault();
+        setSaving(true);
         try {
-            // TODO: Call API to save profile
-            alert('Profile saved successfully!\n\nNote: Full API integration coming soon.');
-            console.log('Saving profile:', formData);
+            // Build communication preference array
+            const communicationPref: string[] = [];
+            if (formData.emailPref) communicationPref.push('Email');
+            if (formData.whatsappPref) communicationPref.push('WhatsApp');
+            if (formData.phonePref) communicationPref.push('Phone');
+
+            const res = await fetch('/api/profile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    firstName: formData.firstName,
+                    lastName: formData.lastName,
+                    phone: formData.phone,
+                    location: formData.location,
+                    timezone: formData.timezone,
+                    goals: formData.goal,
+                    medicalHistory: formData.conditions,
+                    communicationPref: communicationPref.join(',')
+                }),
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+
+            alert('Profile saved successfully!');
         } catch (error) {
             console.error('Failed to save profile:', error);
             alert('Failed to save profile. Please try again.');
+        } finally {
+            setSaving(false);
         }
     };
 

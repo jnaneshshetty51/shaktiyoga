@@ -1,3 +1,11 @@
+/**
+ * @deprecated This file contains deprecated hardcoded data.
+ * WhatsApp community groups should now be fetched from API route:
+ * - GET /api/community/groups
+ * 
+ * This file is kept for type definitions and backward compatibility only.
+ */
+
 export type CommunityGroup = {
     id: string;
     name: string;
@@ -6,14 +14,18 @@ export type CommunityGroup = {
     pinnedMessage: string;
 };
 
-// Mock Data
+/**
+ * @deprecated Use API route /api/community/groups instead
+ * This array is kept for backward compatibility but components
+ * should now fetch from the API.
+ */
 export const initialGroups: CommunityGroup[] = [
     {
         id: 'everyday',
         name: 'Everyday Yoga Batch A',
         role: 'member_everyday',
         whatsappLink: 'https://chat.whatsapp.com/mock-everyday-link',
-        pinnedMessage: 'Welcome! Tomorrow\'s class focuses on hip openers. Bring a strap!'
+        pinnedMessage: "Welcome! Tomorrow's class focuses on hip openers. Bring a strap!"
     },
     {
         id: 'therapy',
@@ -27,13 +39,18 @@ export const initialGroups: CommunityGroup[] = [
         name: 'New Joiners & Trial',
         role: 'trial',
         whatsappLink: 'https://chat.whatsapp.com/mock-trial-link',
-        pinnedMessage: 'Hope you enjoyed your first class! Feel free to ask any questions here.'
+        pinnedMessage: "Hope you enjoyed your first class! Feel free to ask any questions here."
     }
 ];
 
-// In a real app, these would be API calls
+/**
+ * @deprecated Use fetch('/api/community/groups') instead
+ */
 export const getGroups = () => initialGroups;
 
+/**
+ * @deprecated Use API route instead
+ */
 export const updateGroup = (id: string, data: Partial<CommunityGroup>) => {
     const group = initialGroups.find(g => g.id === id);
     if (group) {

@@ -20,6 +20,14 @@ function TrialBookingContent() {
         hasIssues: false,
         issueDetails: ""
     });
+    const [trialOptions, setTrialOptions] = useState<{ goals: string[]; medicalIssues: string[] } | null>(null);
+
+    useEffect(() => {
+        fetch('/api/content/trial-options')
+            .then(res => res.json())
+            .then(data => setTrialOptions(data))
+            .catch(err => console.error('Failed to fetch trial options:', err));
+    }, []);
 
     useEffect(() => {
         if (!isLoading && !user) {
@@ -38,11 +46,30 @@ function TrialBookingContent() {
         }));
     };
 
-    const handleConfirm = () => {
-        // Update user role to trial
-        // login('trial');
-        // TODO: Implement actual trial activation via API
-        router.push("/trial/confirmation");
+    const [isProcessing, setIsProcessing] = useState(false);
+
+    const handleConfirm = async () => {
+        setIsProcessing(true);
+        try {
+            const res = await fetch('/api/trial', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ slot: selectedSlot, healthInfo, isConsult }),
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+
+            // Mock updating user role to trial
+            await login("member@shaktiyoga.com", "admin123");
+
+            router.push("/trial/confirmation");
+        } catch (error) {
+            console.error('Failed to book trial:', error);
+            alert('Failed to book. Please try again.');
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
     if (isLoading) return <div className="p-20 text-center">Loading...</div>;
@@ -147,7 +174,7 @@ function TrialBookingContent() {
                                 <div className="mb-8">
                                     <label className="block text-sm font-bold text-gray-600 mb-3 uppercase tracking-widest">Top Goals</label>
                                     <div className="flex flex-wrap gap-3">
-                                        {["Stress Relief", "Flexibility", "Strength", "Weight Loss", "Peace"].map((goal) => (
+                                        {(trialOptions?.goals || ["Stress Relief", "Flexibility", "Strength", "Weight Loss", "Peace"]).map((goal) => (
                                             <button
                                                 key={goal}
                                                 onClick={() => handleGoalToggle(goal)}
@@ -195,9 +222,10 @@ function TrialBookingContent() {
                                     </button>
                                     <button
                                         onClick={handleConfirm}
-                                        className="px-8 py-3 bg-secondary text-white font-bold uppercase tracking-widest rounded hover:bg-primary transition-colors shadow-lg"
+                                        disabled={isProcessing}
+                                        className="px-8 py-3 bg-secondary text-white font-bold uppercase tracking-widest rounded hover:bg-primary transition-colors shadow-lg disabled:opacity-50"
                                     >
-                                        Confirm Booking
+                                        {isProcessing ? "Processing..." : "Confirm Booking"}
                                     </button>
                                 </div>
                             </div>
